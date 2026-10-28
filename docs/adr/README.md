@@ -37,3 +37,4 @@
 | [0002](0002-reference-other-aggregates-by-id.md) | 다른 애그리거트는 ID로 참조한다 | 채택 |
 | [0003](0003-seat-row-owns-sales-state.md) | 좌석의 판매 상태는 좌석 행이 가진다 | 채택 |
 | [0004](0004-error-response-uses-problem-details.md) | 성공 응답은 감싸지 않고, 에러는 Problem Details로 보낸다 | 채택 |
+| [0005](0005-store-time-as-timestamptz-and-instant.md) | 시각은 timestamptz와 Instant로 다루고, API에서 한국 시간으로 바꾼다 | 채택 |

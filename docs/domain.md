@@ -226,7 +226,7 @@ erDiagram
     }
 ```
 
-모든 테이블에 `created_at`이 있고, 행이 바뀌는 테이블에는 `updated_at`도 있다(그림에서는 생략). 시각 컬럼의 정확한 타입(`timestamp`와 `timestamptz`)은 3단계 프로젝트 골격에서 정한다.
+모든 테이블에 `created_at`이 있고, 행이 바뀌는 테이블에는 `updated_at`도 있다(그림에서는 생략). 시각 컬럼은 `timestamptz`다([ADR 0005](adr/0005-store-time-as-timestamptz-and-instant.md)).
 
 ### 설계 포인트
 
