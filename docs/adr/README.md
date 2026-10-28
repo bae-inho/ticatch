@@ -34,3 +34,5 @@
 | 번호 | 결정 | 상태 |
 | --- | --- | --- |
 | [0001](0001-use-postgresql.md) | 데이터베이스로 PostgreSQL을 쓴다 | 채택 |
+| [0002](0002-reference-other-aggregates-by-id.md) | 다른 애그리거트는 ID로 참조한다 | 채택 |
+| [0003](0003-seat-row-owns-sales-state.md) | 좌석의 판매 상태는 좌석 행이 가진다 | 채택 |
