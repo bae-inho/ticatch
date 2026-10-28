@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: ticatch
+
+  # 기본값은 compose.yaml의 로컬 PostgreSQL이다. 다른 DB를 쓰려면 환경 변수로 덮어쓴다.
+  # 테스트는 Testcontainers가 이 값을 대신한다.
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/ticatch}
+    username: ${DB_USERNAME:ticatch}
+    password: ${DB_PASSWORD:ticatch}
+
+  jpa:
+    # 요청이 끝날 때까지 DB 연결을 쥐고 있지 않게 한다. 지연 로딩은 서비스(트랜잭션) 안에서만 한다.
+    open-in-view: false
+    hibernate:
+      # 스키마는 Flyway migration이 만든다. Hibernate는 엔티티와 테이블이 맞는지 확인만 한다.
+      ddl-auto: validate
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
