@@ -90,7 +90,6 @@ Spring의 `Page` 객체를 그대로 응답하지 않는다. `Page`의 JSON 모�
 
 ```json
 {
-  "type": "about:blank",
   "title": "Conflict",
   "status": 409,
   "detail": "이미 선점되었거나 판매된 좌석이 있습니다.",
@@ -107,11 +106,12 @@ Spring의 `Page` 객체를 그대로 응답하지 않는다. `Page`의 JSON 모�
 | `instance` | 요청 경로 |
 | `code` | 에러 종류를 나타내는 고정 문자열. 클라이언트는 이 값으로 분기한다 |
 
+표준 필드 `type`은 보내지 않는다. RFC 9457에서 `type`이 없으면 `about:blank`, 즉 "HTTP 상태 코드 외에 따로 정의한 문제 유형이 없다"는 뜻이다. 에러 종류는 `code`로 구분한다.
+
 입력 검증 실패(`INVALID_INPUT`)는 어떤 필드가 왜 틀렸는지 `errors`로 함께 준다.
 
 ```json
 {
-  "type": "about:blank",
   "title": "Bad Request",
   "status": 400,
   "detail": "입력값이 올바르지 않습니다.",
@@ -415,8 +415,11 @@ Spring의 `Page` 객체를 그대로 응답하지 않는다. `Page`의 JSON 모�
 | `TOKEN_EXPIRED` | 401 | access token이 만료됨. 재발급하면 된다 |
 | `FORBIDDEN` | 403 | 권한 없음 (관리자 API) |
 | `NOT_FOUND` | 404 | 존재하지 않는 경로 |
-| `METHOD_NOT_ALLOWED` | 405 | 지원하지 않는 HTTP 메서드 |
+| `METHOD_NOT_ALLOWED` | 405 | 지원하지 않는 HTTP 메서드. `Allow` 헤더에 허용 메서드가 있다 |
+| `UNSUPPORTED_MEDIA_TYPE` | 415 | 지원하지 않는 `Content-Type` (예: JSON 대신 text/plain) |
 | `INTERNAL_ERROR` | 500 | 예상하지 못한 서버 오류 |
+
+읽을 수 없는 JSON, 없는 경로처럼 스프링이 직접 내는 오류도 이 표의 코드로 바꿔 보낸다. 표에 전용 코드가 없는 4xx는 `400 INVALID_INPUT`으로, 5xx는 `500 INTERNAL_ERROR`로 보낸다.
 
 `TOKEN_EXPIRED`를 `UNAUTHORIZED`와 나눈 이유: 클라이언트가 만료일 때만 재발급을 시도하고, 그 밖의 경우에는 다시 로그인하게 하려는 것이다.
 
@@ -469,4 +472,4 @@ Spring의 `Page` 객체를 그대로 응답하지 않는다. `Page`의 JSON 모�
 | `PAYMENT_ALREADY_REFUNDED` | 409 | 이미 환불됨 |
 | `REFUND_PERIOD_ENDED` | 409 | 환불 가능 기간(공연 24시간 전)이 지남 |
 
-에러 코드를 코드에서 어떻게 표현할지(예외 클래스, 모듈별 enum, HTTP 상태를 어디서 정할지)는 4단계(공통 기반)에서 정한다.
+에러 코드를 코드에서 표현하는 방법은 [ADR 0006](adr/0006-business-errors-use-one-exception-and-module-error-codes.md)과 [개발 규칙 5절](conventions.md#5-예외와-에러-응답)에 있다.

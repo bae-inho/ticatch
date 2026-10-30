@@ -31,7 +31,8 @@ reservation/
 ├── repository/
 │   ├── ReservationRepository.java
 │   └── projection/            조회 전용 record (Projection)
-└── domain/                    엔티티, 상태 enum, 도메인 규칙
+├── domain/                    엔티티, 상태 enum, 도메인 규칙
+└── exception/                 에러 코드 enum (ReservationErrorCode)
 ```
 
 필요 없는 하위 패키지는 만들지 않는다. 예를 들어 조회 전용 record가 없으면 `projection/`도 없다.
@@ -78,21 +79,33 @@ controller → service → repository → domain
 - 엔티티의 기본 생성자는 `protected`다(`@NoArgsConstructor(access = AccessLevel.PROTECTED)`). JPA만 쓰고, 코드에서는 정적 생성 메서드나 생성자로 만든다.
 - 시각은 `Instant`로 다루고 "지금"은 주입받은 `Clock`에서 얻는다([ADR 0005](adr/0005-store-time-as-timestamptz-and-instant.md)).
 
-## 5. DB 변경
+## 5. 예외와 에러 응답
+
+구조와 이유는 [ADR 0006](adr/0006-business-errors-use-one-exception-and-module-error-codes.md)에 있다.
+
+- 업무 규칙 위반은 `throw new BusinessException(ReservationErrorCode.SEAT_NOT_AVAILABLE)`처럼 던진다.
+- `IllegalArgumentException`, `IllegalStateException`으로 업무 에러를 표현하지 않는다. 이 예외들은 코드의 버그를 뜻하고, 응답은 `500 INTERNAL_ERROR`가 된다.
+- 에러 코드는 모듈의 `exception/{Module}ErrorCode` enum에 둔다. 상수 이름이 응답의 `code`가 된다.
+- 새 에러 코드는 [API 설계 6절](api.md#6-에러-코드-목록)에 먼저 추가하고, HTTP 상태는 [400과 409를 가르는 기준](api.md#400과-409를-가르는-기준)을 따른다.
+- 검증 애너테이션에는 `message`를 직접 쓴다. 예: `@NotBlank(message = "이름은 비어 있을 수 없습니다.")`. 기본 메시지는 서버의 언어 설정에 따라 바뀐다(한국어 PC에서는 한국어, CI 서버에서는 영어).
+- 컨트롤러와 서비스에서 예외를 잡아 응답을 직접 만들지 않는다. 응답은 `GlobalExceptionHandler`가 만든다.
+- 로그: 업무 예외는 DEBUG(스택 트레이스 없음), 예상하지 못한 예외는 ERROR(스택 트레이스 포함)로 남는다.
+
+## 6. DB 변경
 
 - 스키마는 Flyway migration이 만든다. 파일은 `src/main/resources/db/migration/V{번호}__{설명}.sql`이다.
 - **이미 커밋된 migration 파일은 고치지 않는다.** 바꿀 일이 생기면 다음 번호 파일을 추가한다. Flyway는 적용한 파일의 체크섬을 기록해서, 파일이 바뀌면 기동을 거부한다.
 - Hibernate는 `ddl-auto: validate`다. 엔티티와 테이블이 다르면 기동이 실패한다. 엔티티를 바꾸면 migration도 함께 추가한다.
 - 도메인 불변식 중 DB로 표현할 수 있는 것은 제약으로 건다([도메인 설계 5절](domain.md#5-불변식과-지키는-곳)).
 
-## 6. 테스트
+## 7. 테스트
 
 - DB가 필요한 테스트는 Testcontainers로 띄운 **실제 PostgreSQL**에서 돌린다. H2 같은 대체 DB는 쓰지 않는다. 조건부 유일 인덱스처럼 PostgreSQL에만 있는 기능을 쓰고, DB마다 락과 격리 수준 동작이 달라서 다른 DB로 통과한 테스트는 믿을 수 없다.
 - 테스트 메서드 이름은 한국어로 "무엇을 하면 어떻게 된다"를 쓴다. 예: `결제_대기_예매는_회원과_회차마다_하나뿐이다`.
 - 버그를 고칠 때는 그 버그를 재현하는 테스트를 먼저 만든다.
 - 테스트는 Docker가 실행 중이어야 돈다.
 
-## 7. 커밋
+## 8. 커밋
 
 메시지 형식은 `<type>: <한국어 설명>`이다. 설명은 "~한다"로 끝낸다.
 
