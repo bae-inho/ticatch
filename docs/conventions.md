@@ -57,7 +57,14 @@ controller → service → repository → domain
 - 모듈 사이 호출은 [도메인 설계의 의존 방향](domain.md#의존-방향)을 따른다. 순환을 만들지 않는다.
 - `global`은 업무 모듈에 의존하지 않는다.
 
-이 규칙은 모듈 코드가 생기는 6단계에서 ArchUnit 테스트로 강제한다.
+이 규칙은 [ArchitectureTest](../src/test/java/com/ticatch/ArchitectureTest.java)가 강제한다. 규칙을 어기면 빌드가 실패한다.
+
+| 테스트 | 막는 것 |
+| --- | --- |
+| 계층 방향 | 서비스가 컨트롤러를, 리포지토리가 서비스를 import하는 것 |
+| 엔티티·리포지토리 | 다른 모듈의 엔티티나 리포지토리를 직접 쓰는 것 |
+| 순환 의존 | 두 모듈이 서로를 호출하는 것 |
+| global 독립 | `global`이 업무 모듈을 import하는 것 |
 
 ## 3. 이름
 
@@ -108,7 +115,15 @@ controller → service → repository → domain
 - 버그를 고칠 때는 그 버그를 재현하는 테스트를 먼저 만든다.
 - 테스트는 Docker가 실행 중이어야 돈다.
 
-## 8. 커밋
+## 8. 브랜치와 PR
+
+- `main`에는 PR로만 합친다. CI가 통과해야 합친다.
+- 기능 하나가 브랜치 하나, PR 하나다. 브랜치 이름은 `{type}/{설명}`이다. 예: `feat/concert-registration`. `type`은 아래 커밋 type과 같다.
+- PR 제목은 커밋 메시지 형식을 따른다. PR 본문에는 무엇을 왜 바꿨는지, 어떻게 확인했는지 쓴다.
+- 합칠 때는 **Squash and merge**를 쓴다. PR 하나가 `main`의 커밋 하나가 되고, PR 제목이 그 커밋 메시지가 된다.
+- 합친 브랜치는 지운다.
+
+## 9. 커밋
 
 메시지 형식은 `<type>: <한국어 설명>`이다. 설명은 "~한다"로 끝낸다.
 
