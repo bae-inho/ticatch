@@ -50,7 +50,7 @@
 | 상태 | 언제 |
 | --- | --- |
 | `200 OK` | 조회, 본문을 돌려주는 상태 변경 |
-| `201 Created` | 새 리소스 생성. `Location` 헤더에 새 리소스 주소를 넣는다 |
+| `201 Created` | 새 리소스 생성. 그 리소스를 조회하는 API가 있으면 `Location` 헤더에 주소를 넣는다 |
 | `204 No Content` | 돌려줄 본문이 없는 성공 |
 
 ### 상태를 바꾸는 API
@@ -89,8 +89,9 @@ Spring의 `Page` 객체를 그대로 응답하지 않는다. `Page`의 JSON 모�
 | 같은 키, 같은 요청 | 다시 처리하지 않고 처음 결과를 같은 상태 코드로 돌려준다 |
 | 같은 키, 다른 요청 | `409 IDEMPOTENCY_KEY_CONFLICT` |
 | 키 없음 | `400 IDEMPOTENCY_KEY_REQUIRED` |
+| 키가 64자 초과 | `400 INVALID_INPUT` |
 
-"같은 요청"은 결제면 같은 `reservationId`, 충전이면 같은 `amount`를 뜻한다.
+"같은 요청"은 결제면 같은 `reservationId`, 충전이면 같은 회원의 같은 `amount`를 뜻한다. 같은 키의 요청이 동시에 와도 한 번만 처리하고, 나머지는 처음 결과를 받는다.
 
 ## 2. 에러 응답
 
@@ -344,7 +345,7 @@ access token이 필요하다. 본문은 재발급과 같다(`refreshToken`). `20
 }
 ```
 
-`201 Created`, `Location: /api/v1/payments/77`
+`201 Created`
 
 ```json
 {
@@ -404,10 +405,12 @@ access token이 필요하다. 본문은 재발급과 같다(`refreshToken`). `20
   "transactionId": 301,
   "type": "CHARGE",
   "amount": 50000,
-  "balance": 1050000,
+  "balanceAfter": 1050000,
   "createdAt": "2026-12-01T19:58:00+09:00"
 }
 ```
+
+잔액 조회(`GET /api/v1/me/points`)는 `{"balance": 1050000}`이고, 거래 내역(`GET /api/v1/me/points/transactions`)은 위 거래 모양을 최근 거래부터 목록으로 준다.
 
 | 상태 | code | 상황 |
 | --- | --- | --- |
@@ -431,7 +434,7 @@ access token이 필요하다. 본문은 재발급과 같다(`refreshToken`). `20
 
 좌석 이름은 `{등급 이름}-{번호}`로 만든다(`VIP-1` … `VIP-100`).
 
-`201 Created`, `Location: /api/v1/admin/performances/10`
+`201 Created`
 
 ```json
 {

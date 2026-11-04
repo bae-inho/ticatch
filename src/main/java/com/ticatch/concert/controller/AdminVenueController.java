@@ -6,9 +6,9 @@ import com.ticatch.concert.service.VenueService;
 import com.ticatch.global.web.PageQuery;
 import com.ticatch.global.web.PageResponse;
 import jakarta.validation.Valid;
-import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,7 +26,7 @@ public class AdminVenueController {
     @PostMapping
     public ResponseEntity<VenueResponse> create(@Valid @RequestBody CreateVenueRequest request) {
         VenueResponse venue = VenueResponse.from(venueService.create(request.name(), request.address()));
-        return ResponseEntity.created(URI.create("/api/v1/admin/venues/" + venue.venueId())).body(venue);
+        return ResponseEntity.status(HttpStatus.CREATED).body(venue);
     }
 
     @GetMapping

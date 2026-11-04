@@ -34,4 +34,10 @@ public class PointWallet extends BaseEntity {
         wallet.balance = 0;
         return wallet;
     }
+
+    /** 잔액을 늘리고 늘어난 잔액을 돌려준다. 동시에 바뀌지 않도록 지갑 행을 잠근 상태에서 부른다. */
+    public long charge(long amount) {
+        balance += amount;
+        return balance;
+    }
 }
