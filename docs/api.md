@@ -188,6 +188,8 @@ Spring의 `Page` 객체를 그대로 응답하지 않는다. `Page`의 JSON 모�
 
 좌석 배치는 좌석마다 `available`(살 수 있는가)만 알려 준다. 선점 중인지 판매됐는지는 구분하지 않는다. 관람객에게 필요 없는 정보이고, 선점 중인 좌석을 노려 새로고침하는 행동을 부추기지 않기 위해서다.
 
+공개되지 않은 공연과 그 회차는 `404`다(`CONCERT_NOT_FOUND`, `PERFORMANCE_NOT_FOUND`). 회차 응답의 `onSale`은 "지금 예매할 수 있는가"이고, 공연이 공개돼 있고 회차가 취소되지 않았으며 지금이 예매 오픈 시각 이후·공연 시작 전일 때 `true`다. 예매 오픈 전에도 좌석과 가격은 볼 수 있다.
+
 ### 예매
 
 | 메서드 | 경로 | 설명 | 인증 | 성공 |
@@ -267,6 +269,36 @@ Spring의 `Page` 객체를 그대로 응답하지 않는다. `Page`의 JSON 모�
 ### 로그아웃 — `POST /api/v1/auth/logout`
 
 access token이 필요하다. 본문은 재발급과 같다(`refreshToken`). `204 No Content`. 이미 폐기된 토큰이어도 `204`다.
+
+### 등급별 잔여 좌석 — `GET /api/v1/performances/{performanceId}/seat-grades`
+
+`200 OK`
+
+```json
+{
+  "performanceId": 10,
+  "onSale": true,
+  "seatGrades": [
+    { "seatGradeId": 21, "name": "VIP", "price": 150000, "remainingSeats": 37 },
+    { "seatGradeId": 22, "name": "R", "price": 120000, "remainingSeats": 0 }
+  ]
+}
+```
+
+### 좌석 배치 — `GET /api/v1/performances/{performanceId}/seats?gradeId=21`
+
+`gradeId`를 빼면 모든 등급의 좌석을 준다. `200 OK`
+
+```json
+{
+  "performanceId": 10,
+  "onSale": true,
+  "seats": [
+    { "seatId": 101, "label": "VIP-1", "seatGradeId": 21, "available": false },
+    { "seatId": 102, "label": "VIP-2", "seatGradeId": 21, "available": true }
+  ]
+}
+```
 
 ### 좌석 선점 — `POST /api/v1/reservations`
 
