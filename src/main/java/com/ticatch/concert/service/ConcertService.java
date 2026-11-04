@@ -14,6 +14,8 @@ import com.ticatch.concert.service.dto.ConcertResult;
 import com.ticatch.concert.service.dto.PerformanceResult;
 import com.ticatch.concert.service.dto.SchedulePerformanceCommand;
 import com.ticatch.global.exception.BusinessException;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -32,6 +34,7 @@ public class ConcertService {
     private final ConcertRepository concertRepository;
     private final PerformanceRepository performanceRepository;
     private final VenueRepository venueRepository;
+    private final Clock clock;
 
     @Transactional
     public ConcertResult create(String title, String description) {
@@ -46,9 +49,37 @@ public class ConcertService {
         return concerts.map(ConcertResult::from);
     }
 
+    /** 관람객용 목록. 공개된 공연만 준다. */
+    public Page<ConcertResult> getOpenConcerts(Pageable pageable) {
+        return concertRepository.findAllByStatus(ConcertStatus.OPEN, pageable).map(ConcertResult::from);
+    }
+
+    /** 관리자용 상세. 상태와 관계없이 보여 준다. */
     public ConcertDetailResult getDetail(Long concertId) {
-        Concert concert = findConcert(concertId);
-        List<Performance> performances = performanceRepository.findAllByConcertIdOrderByStartsAt(concertId);
+        return detailOf(findConcert(concertId));
+    }
+
+    /** 관람객용 상세. 공개되지 않은 공연은 없는 것처럼 404다(docs/api.md 2절). */
+    public ConcertDetailResult getOpenConcertDetail(Long concertId) {
+        Concert concert = concertRepository.findById(concertId)
+                .filter(Concert::isOpen)
+                .orElseThrow(() -> new BusinessException(ConcertErrorCode.CONCERT_NOT_FOUND));
+        return detailOf(concert);
+    }
+
+    /** 관람객이 볼 수 있는 회차. 공개되지 않은 공연의 회차는 없는 것처럼 404다. */
+    public PerformanceResult getOpenPerformance(Long performanceId) {
+        Performance performance = performanceRepository.findById(performanceId)
+                .orElseThrow(() -> new BusinessException(ConcertErrorCode.PERFORMANCE_NOT_FOUND));
+        Concert concert = concertRepository.findById(performance.getConcertId())
+                .filter(Concert::isOpen)
+                .orElseThrow(() -> new BusinessException(ConcertErrorCode.PERFORMANCE_NOT_FOUND));
+        Venue venue = venueRepository.getReferenceById(performance.getVenueId());
+        return PerformanceResult.of(performance, venue, isOnSale(concert, performance));
+    }
+
+    private ConcertDetailResult detailOf(Concert concert) {
+        List<Performance> performances = performanceRepository.findAllByConcertIdOrderByStartsAt(concert.getId());
         Map<Long, Venue> venues = venueRepository
                 .findAllById(performances.stream().map(Performance::getVenueId).distinct().toList())
                 .stream()
@@ -56,8 +87,13 @@ public class ConcertService {
         return new ConcertDetailResult(
                 ConcertResult.from(concert),
                 performances.stream()
-                        .map(performance -> PerformanceResult.of(performance, venues.get(performance.getVenueId())))
+                        .map(performance -> PerformanceResult.of(
+                                performance, venues.get(performance.getVenueId()), isOnSale(concert, performance)))
                         .toList());
+    }
+
+    private boolean isOnSale(Concert concert, Performance performance) {
+        return concert.isOpen() && performance.isOnSale(Instant.now(clock));
     }
 
     @Transactional
@@ -84,14 +120,16 @@ public class ConcertService {
 
     @Transactional
     public PerformanceResult schedulePerformance(SchedulePerformanceCommand command) {
-        findConcert(command.concertId()).requireNotEnded();
+        Concert concert = findConcert(command.concertId());
+        concert.requireNotEnded();
         Venue venue = venueRepository.findById(command.venueId())
                 .orElseThrow(() -> new BusinessException(ConcertErrorCode.VENUE_NOT_FOUND));
 
         Performance performance = Performance.schedule(
                 command.concertId(), venue.getId(), command.startsAt(), command.bookingOpensAt());
         command.seatGrades().forEach(grade -> performance.addSeatGrade(grade.name(), grade.price()));
-        return PerformanceResult.of(performanceRepository.saveAndFlush(performance), venue);
+        performanceRepository.saveAndFlush(performance);
+        return PerformanceResult.of(performance, venue, isOnSale(concert, performance));
     }
 
     private Concert findConcert(Long concertId) {

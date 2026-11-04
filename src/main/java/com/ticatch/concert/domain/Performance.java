@@ -65,6 +65,14 @@ public class Performance extends BaseEntity {
         return performance;
     }
 
+    /**
+     * 예매를 받을 수 있는 시간인가. 판매 가능 여부는 저장하지 않고 매번 계산한다(docs/domain.md 2절).
+     * 공연이 공개됐는지는 {@link Concert}가 따로 판단한다.
+     */
+    public boolean isOnSale(Instant now) {
+        return status == PerformanceStatus.SCHEDULED && !now.isBefore(bookingOpensAt) && now.isBefore(startsAt);
+    }
+
     public SeatGrade addSeatGrade(String name, long price) {
         SeatGrade grade = SeatGrade.create(name, price);
         seatGrades.add(grade);

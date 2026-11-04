@@ -58,6 +58,10 @@ public class Concert extends BaseEntity {
         status = ConcertStatus.ENDED;
     }
 
+    public boolean isOpen() {
+        return status == ConcertStatus.OPEN;
+    }
+
     /** 종료된 공연에는 회차를 더 붙일 수 없다. */
     public void requireNotEnded() {
         if (status == ConcertStatus.ENDED) {
