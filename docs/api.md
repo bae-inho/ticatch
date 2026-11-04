@@ -322,6 +322,7 @@ access token이 필요하다. 본문은 재발급과 같다(`refreshToken`). `20
   "totalAmount": 300000,
   "expiresAt": "2026-12-01T20:10:00+09:00",
   "createdAt": "2026-12-01T20:00:00+09:00",
+  "paymentId": null,
   "seats": [
     { "seatId": 101, "label": "VIP-1", "gradeName": "VIP", "price": 150000 },
     { "seatId": 102, "label": "VIP-2", "gradeName": "VIP", "price": 150000 }
@@ -339,6 +340,7 @@ access token이 필요하다. 본문은 재발급과 같다(`refreshToken`). `20
 | 409 | `SEAT_NOT_AVAILABLE` | 고른 좌석 중 하나라도 선점·판매됨 (전부 실패) |
 
 - 내 예매 상세(`GET /api/v1/me/reservations/{id}`)도 위 응답과 같은 모양이다. 내 예매 목록은 `seats`를 뺀 모양을 최근 예매부터 준다.
+- `paymentId`는 결제한 예매에만 있다. 예매 취소·환불(`POST /api/v1/payments/{paymentId}/refund`)에 이 값을 쓴다.
 - 결제 대기 예매가 선점 시간(10분)을 넘기면 서버가 30초마다 `EXPIRED`로 바꾸고 좌석을 돌려놓는다. 이미 시간이 지난 자기 예매가 있는 상태에서 같은 회차를 다시 선점하면, 그 예매를 바로 만료시키고 새로 선점한다.
 
 ### 선점 취소 — `POST /api/v1/reservations/{reservationId}/cancel`
@@ -369,6 +371,7 @@ access token이 필요하다. 본문은 재발급과 같다(`refreshToken`). `20
   "amount": 300000,
   "status": "PAID",
   "paidAt": "2026-12-01T20:05:12+09:00",
+  "refundedAt": null,
   "pointBalance": 700000
 }
 ```
