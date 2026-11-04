@@ -3,6 +3,7 @@ package com.ticatch.point.service;
 import com.ticatch.global.exception.BusinessException;
 import com.ticatch.global.web.IdempotencyErrorCode;
 import com.ticatch.point.domain.PointTransaction;
+import com.ticatch.point.domain.PointTransactionType;
 import com.ticatch.point.domain.PointWallet;
 import com.ticatch.point.repository.PointTransactionRepository;
 import com.ticatch.point.repository.PointWalletRepository;
@@ -67,5 +68,30 @@ public class PointService {
             throw new BusinessException(IdempotencyErrorCode.IDEMPOTENCY_KEY_CONFLICT);
         }
         return PointTransactionResult.from(transaction);
+    }
+
+    /** 결제 금액을 차감하고 차감 후 잔액을 돌려준다. 잔액이 모자라면 {@code INSUFFICIENT_POINTS}다. */
+    @Transactional
+    public long pay(Long userId, long amount, Long paymentId) {
+        PointWallet wallet = pointWalletRepository.findByUserIdForUpdate(userId).orElseThrow();
+        long balanceAfter = wallet.pay(amount);
+        pointTransactionRepository.save(PointTransaction.pay(wallet.getId(), amount, balanceAfter, paymentId));
+        return balanceAfter;
+    }
+
+    /** 결제 금액을 돌려주고 환불 후 잔액을 돌려준다. */
+    @Transactional
+    public long refund(Long userId, long amount, Long paymentId) {
+        PointWallet wallet = pointWalletRepository.findByUserIdForUpdate(userId).orElseThrow();
+        long balanceAfter = wallet.refund(amount);
+        pointTransactionRepository.save(PointTransaction.refund(wallet.getId(), amount, balanceAfter, paymentId));
+        return balanceAfter;
+    }
+
+    /** 결제했을 때의 차감 후 잔액. 같은 결제 요청이 다시 왔을 때 처음 응답을 그대로 만들기 위해 쓴다. */
+    public long getBalanceAfterPayment(Long paymentId) {
+        return pointTransactionRepository.findByPaymentIdAndType(paymentId, PointTransactionType.PAY)
+                .orElseThrow()
+                .getBalanceAfter();
     }
 }

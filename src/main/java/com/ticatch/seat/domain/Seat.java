@@ -54,4 +54,20 @@ public class Seat extends BaseEntity {
         }
         status = SeatStatus.AVAILABLE;
     }
+
+    /** 결제가 끝나 판매한다. 선점 중인 좌석에만 부른다. */
+    public void sell() {
+        if (status != SeatStatus.HELD) {
+            throw new IllegalStateException("선점 중인 좌석만 팔 수 있다. seatId=" + id + ", status=" + status);
+        }
+        status = SeatStatus.SOLD;
+    }
+
+    /** 환불돼 다시 팔 수 있게 한다. 판매된 좌석에만 부른다. */
+    public void releaseSold() {
+        if (status != SeatStatus.SOLD) {
+            throw new IllegalStateException("판매된 좌석만 되돌릴 수 있다. seatId=" + id + ", status=" + status);
+        }
+        status = SeatStatus.AVAILABLE;
+    }
 }

@@ -68,6 +68,18 @@ public class SeatService {
         seatRepository.findAllById(seatIds).forEach(Seat::release);
     }
 
+    /** 결제가 끝난 좌석을 판매 상태로 바꾼다. 예매 행을 잠근 상태에서 부른다. */
+    @Transactional
+    public void sell(List<Long> seatIds) {
+        seatRepository.findAllById(seatIds).forEach(Seat::sell);
+    }
+
+    /** 환불된 좌석을 다시 팔 수 있게 한다. 예매 행을 잠근 상태에서 부른다. */
+    @Transactional
+    public void releaseSold(List<Long> seatIds) {
+        seatRepository.findAllById(seatIds).forEach(Seat::releaseSold);
+    }
+
     /** 공개된 공연의 회차에 대해 등급별 가격과 남은 좌석 수를 준다. */
     public SeatGradeStockResult getSeatGradeStock(Long performanceId) {
         PerformanceResult performance = concertService.getOpenPerformance(performanceId);

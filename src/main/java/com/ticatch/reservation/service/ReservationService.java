@@ -71,10 +71,40 @@ public class ReservationService {
     /** 결제 전 선점을 취소하고 좌석을 돌려놓는다. */
     @Transactional
     public void cancel(Long userId, Long reservationId) {
-        Reservation reservation = reservationRepository.findByIdAndUserId(reservationId, userId)
-                .orElseThrow(() -> new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+        Reservation reservation = findOwnForUpdate(userId, reservationId);
         reservation.cancel();
         seatService.release(reservation.seatIds());
+    }
+
+    /**
+     * 회원 본인의 예매 행을 잠근다. 결제 모듈이 멱등성 키를 확인하기 전에 불러, 같은 예매에 대한 결제 요청이
+     * 동시에 오면 한 요청씩 차례로 처리되게 한다.
+     */
+    @Transactional
+    public void lockOwnReservation(Long userId, Long reservationId) {
+        findOwnForUpdate(userId, reservationId);
+    }
+
+    /** 결제로 예매를 확정하고 좌석을 판매 상태로 바꾼다. 결제할 금액(선점 시점 가격의 합)을 돌려준다. */
+    @Transactional
+    public long confirm(Long userId, Long reservationId) {
+        Reservation reservation = findOwnForUpdate(userId, reservationId);
+        reservation.confirm(Instant.now(clock));
+        seatService.sell(reservation.seatIds());
+        return reservation.getTotalAmount();
+    }
+
+    /** 환불로 확정된 예매를 취소하고 좌석을 다시 팔 수 있게 한다. 공연 시작 24시간 전이 지났으면 실패한다. */
+    @Transactional
+    public void cancelForRefund(Long reservationId) {
+        Reservation reservation = reservationRepository.findWithLockById(reservationId).orElseThrow();
+        Instant refundDeadline = concertService.getStartsAt(reservation.getPerformanceId())
+                .minus(Reservation.REFUND_DEADLINE_BEFORE_START);
+        if (!Instant.now(clock).isBefore(refundDeadline)) {
+            throw new BusinessException(ReservationErrorCode.REFUND_PERIOD_ENDED);
+        }
+        reservation.cancelConfirmed();
+        seatService.releaseSold(reservation.seatIds());
     }
 
     /**
@@ -117,6 +147,11 @@ public class ReservationService {
                     // 결제 대기 예매가 잠시 두 개가 되어 유일 인덱스에 걸리지 않는다.
                     reservationRepository.flush();
                 });
+    }
+
+    private Reservation findOwnForUpdate(Long userId, Long reservationId) {
+        return reservationRepository.findByIdAndUserId(reservationId, userId)
+                .orElseThrow(() -> new BusinessException(ReservationErrorCode.RESERVATION_NOT_FOUND));
     }
 
     private void expire(Reservation reservation) {

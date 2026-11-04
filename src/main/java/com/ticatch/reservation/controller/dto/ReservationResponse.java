@@ -16,6 +16,7 @@ public record ReservationResponse(
         long totalAmount,
         OffsetDateTime expiresAt,
         OffsetDateTime createdAt,
+        Long paymentId,
         List<SeatItem> seats) {
 
     public static ReservationResponse from(ReservationDetailResult detail) {
@@ -29,6 +30,7 @@ public record ReservationResponse(
                 summary.totalAmount(),
                 KoreaTime.of(summary.expiresAt()),
                 KoreaTime.of(summary.createdAt()),
+                summary.paymentId(),
                 detail.seats().stream()
                         .map(seat -> new SeatItem(seat.seatId(), seat.label(), seat.gradeName(), seat.price()))
                         .toList());

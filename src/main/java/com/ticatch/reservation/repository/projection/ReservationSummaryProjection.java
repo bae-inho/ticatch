@@ -12,5 +12,6 @@ public record ReservationSummaryProjection(
         ReservationStatus status,
         Long totalAmount,
         Instant expiresAt,
-        Instant createdAt) {
+        Instant createdAt,
+        Long paymentId) {
 }
