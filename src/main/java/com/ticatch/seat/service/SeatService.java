@@ -2,13 +2,17 @@ package com.ticatch.seat.service;
 
 import com.ticatch.concert.service.ConcertService;
 import com.ticatch.concert.service.dto.PerformanceResult;
+import com.ticatch.global.exception.BusinessException;
+import com.ticatch.seat.domain.Seat;
 import com.ticatch.seat.domain.SeatStatus;
+import com.ticatch.seat.exception.SeatErrorCode;
 import com.ticatch.seat.repository.SeatBulkRepository;
 import com.ticatch.seat.repository.SeatBulkRepository.NewSeat;
 import com.ticatch.seat.repository.SeatRepository;
 import com.ticatch.seat.repository.projection.SeatGradeStockProjection;
 import com.ticatch.seat.repository.projection.SeatProjection;
 import com.ticatch.seat.service.dto.CreateSeatsCommand;
+import com.ticatch.seat.service.dto.HeldSeatResult;
 import com.ticatch.seat.service.dto.SeatGradeStockResult;
 import com.ticatch.seat.service.dto.SeatGradeStockResult.GradeStock;
 import com.ticatch.seat.service.dto.SeatMapResult;
@@ -42,6 +46,26 @@ public class SeatService {
                 .toList();
         seatBulkRepository.insertAll(command.performanceId(), seats, Instant.now(clock));
         return seats.size();
+    }
+
+    /**
+     * 회차의 좌석들을 모두 선점한다. 하나라도 없거나 이미 선점·판매됐으면 예외를 던지고, 트랜잭션이 되돌려져 아무것도 선점되지 않는다.
+     * 좌석을 ID 순서로 잠근 뒤 상태를 확인한다(ADR 0008).
+     */
+    @Transactional
+    public List<HeldSeatResult> hold(Long performanceId, List<Long> seatIds) {
+        List<Seat> seats = seatRepository.findAllForUpdate(performanceId, seatIds);
+        if (seats.size() != seatIds.size()) {
+            throw new BusinessException(SeatErrorCode.SEAT_NOT_FOUND);
+        }
+        seats.forEach(Seat::hold);
+        return seats.stream().map(HeldSeatResult::from).toList();
+    }
+
+    /** 선점을 푼다. 선점 취소와 만료에서 부른다. 이 좌석들을 가진 예매 행을 잠근 상태에서 부른다. */
+    @Transactional
+    public void release(List<Long> seatIds) {
+        seatRepository.findAllById(seatIds).forEach(Seat::release);
     }
 
     /** 공개된 공연의 회차에 대해 등급별 가격과 남은 좌석 수를 준다. */
