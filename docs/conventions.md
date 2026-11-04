@@ -88,6 +88,9 @@ controller → service → repository → domain
 - 시각은 `Instant`로 다루고 "지금"은 주입받은 `Clock`에서 얻는다([ADR 0005](adr/0005-store-time-as-timestamptz-and-instant.md)).
 - 엔티티는 `global.jpa.BaseEntity`를 상속해 `created_at`, `updated_at`을 자동으로 채운다. 만든 뒤 바뀌지 않는 행은 `CreatedAtEntity`를 상속한다.
 - 로그인한 회원은 컨트롤러에서 `@AuthenticationPrincipal Jwt jwt`로 받고, `Long.valueOf(jwt.getSubject())`가 회원 ID다. 회원 ID를 경로나 본문으로 받지 않는다.
+- 목록 API는 `@Valid PageQuery query`로 페이지를 받고 `PageResponse.of(...)`로 응답한다. 정렬은 서버가 정한다.
+- 응답의 시각은 `KoreaTime.of(instant)`로 한국 시간(`+09:00`)으로 바꾼다. 요청으로 받은 `OffsetDateTime`은 컨트롤러에서 `toInstant()`로 바꿔 서비스에 넘긴다.
+- 수천 행 이상을 한꺼번에 넣을 때는 JPA가 아니라 `JdbcTemplate.batchUpdate`를 쓴다(예: 좌석 일괄 생성). ID를 DB가 만드는(IDENTITY) 테이블은 Hibernate가 INSERT를 묶어 보내지 못한다.
 
 ## 5. 예외와 에러 응답
 

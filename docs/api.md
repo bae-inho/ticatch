@@ -64,7 +64,8 @@
 목록은 페이지 단위로 준다. 요청은 `?page=0&size=20`이다.
 
 - `page`는 0부터 시작한다. 기본값은 0이다.
-- `size`의 기본값은 20, 최댓값은 100이다.
+- `size`의 기본값은 20, 최댓값은 100이다. 범위를 벗어나면 `400 INVALID_INPUT`이다.
+- 정렬은 클라이언트가 고르지 않는다. API마다 서버가 정한다(예: 최근 등록순).
 
 ```json
 {
@@ -214,7 +215,7 @@ Spring의 `Page` 객체를 그대로 응답하지 않는다. `Page`의 JSON 모�
 | POST | `/api/v1/admin/concerts` | 공연 등록 (`PREPARING`) | 201 |
 | GET | `/api/v1/admin/concerts` | 공연 목록 (`?status=`로 필터, 목록) | 200 |
 | GET | `/api/v1/admin/concerts/{concertId}` | 공연 상세 (모든 상태, 회차 포함) | 200 |
-| PATCH | `/api/v1/admin/concerts/{concertId}` | 제목·설명 수정 | 200 |
+| PATCH | `/api/v1/admin/concerts/{concertId}` | 제목·설명 수정 (두 필드를 모두 보낸다) | 200 |
 | POST | `/api/v1/admin/concerts/{concertId}/open` | 공개 | 204 |
 | POST | `/api/v1/admin/concerts/{concertId}/end` | 종료 | 204 |
 | POST | `/api/v1/admin/concerts/{concertId}/performances` | 회차 등록 (좌석 일괄 생성) | 201 |
