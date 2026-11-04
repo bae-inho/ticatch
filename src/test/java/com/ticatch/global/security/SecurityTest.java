@@ -69,10 +69,9 @@ class SecurityTest {
     }
 
     @Test
-    void 관리자_토큰은_관리자_API의_권한_검사를_통과한다() throws Exception {
-        // 아직 관리자 API가 없어서, 권한 검사를 통과한 뒤 "없는 경로" 404가 나오는지로 확인한다.
+    void 관리자_토큰은_관리자_API를_부를_수_있다() throws Exception {
         mockMvc.perform(get("/api/v1/admin/concerts").header(HttpHeaders.AUTHORIZATION, "Bearer " + validToken("ADMIN")))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk());
     }
 
     @Test
