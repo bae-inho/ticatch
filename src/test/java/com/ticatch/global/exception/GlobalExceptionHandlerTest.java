@@ -17,6 +17,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
@@ -29,9 +30,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 에러 응답이 API 설계(docs/api.md 2절)의 계약을 지키는지 확인한다.
- * 실제 기능 컨트롤러가 없어서, 상황별로 예외를 일으키는 테스트 전용 컨트롤러를 쓴다.
+ * 상황별로 예외를 일으키는 테스트 전용 컨트롤러를 쓴다.
+ * 스프링 MVC의 예외 처리만 보는 테스트라 보안 필터는 끈다. 401·403은 SecurityTest가 확인한다.
  */
-@WebMvcTest
+@WebMvcTest(controllers = GlobalExceptionHandlerTest.ErrorTestController.class)
+@AutoConfigureMockMvc(addFilters = false)
 @Import(GlobalExceptionHandlerTest.ErrorTestController.class)
 class GlobalExceptionHandlerTest {
 

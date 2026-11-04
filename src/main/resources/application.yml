@@ -21,3 +21,10 @@ management:
     web:
       exposure:
         include: health
+
+ticatch:
+  jwt:
+    # 기본값은 로컬 개발용이다. 서버에 띄울 때는 JWT_SECRET 환경 변수로 32바이트 이상의 다른 값을 넣는다.
+    secret: ${JWT_SECRET:ticatch-local-development-secret-key-0123456789}
+    access-token-ttl: 30m
+    refresh-token-ttl: 14d

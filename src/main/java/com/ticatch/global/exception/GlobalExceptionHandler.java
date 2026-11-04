@@ -6,6 +6,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -28,6 +30,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         // 업무 규칙에 따른 정상적인 실패다. 부하가 몰리면 매우 많이 생기므로 스택 트레이스 없이 DEBUG로 남긴다.
         log.debug("업무 예외: {}", exception.getErrorCode().name());
         return toResponse(exception.getErrorCode());
+    }
+
+    /** 토큰이 없거나 올바르지 않을 때. 보안 필터가 {@code SecurityErrorHandler}를 거쳐 넘긴다. */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ProblemDetail> handleAuthenticationException(AuthenticationException exception) {
+        log.debug("인증 실패: {}", exception.getMessage());
+        return toResponse(CommonErrorCode.UNAUTHORIZED);
+    }
+
+    /** 로그인했지만 권한이 없을 때. 예: 일반 회원이 관리자 API를 부름. */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ProblemDetail> handleAccessDeniedException(AccessDeniedException exception) {
+        log.debug("권한 없음: {}", exception.getMessage());
+        return toResponse(CommonErrorCode.FORBIDDEN);
     }
 
     @ExceptionHandler(Exception.class)
