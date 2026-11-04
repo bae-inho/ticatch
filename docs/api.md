@@ -316,9 +316,12 @@ access token이 필요하다. 본문은 재발급과 같다(`refreshToken`). `20
 {
   "reservationId": 55,
   "performanceId": 10,
+  "concertTitle": "겨울 콘서트",
+  "startsAt": "2026-12-24T19:00:00+09:00",
   "status": "PENDING",
   "totalAmount": 300000,
   "expiresAt": "2026-12-01T20:10:00+09:00",
+  "createdAt": "2026-12-01T20:00:00+09:00",
   "seats": [
     { "seatId": 101, "label": "VIP-1", "gradeName": "VIP", "price": 150000 },
     { "seatId": 102, "label": "VIP-2", "gradeName": "VIP", "price": 150000 }
@@ -334,6 +337,18 @@ access token이 필요하다. 본문은 재발급과 같다(`refreshToken`). `20
 | 409 | `PERFORMANCE_NOT_ON_SALE` | 판매 기간이 아니거나, 회차가 취소됐거나, 공연이 공개 상태가 아님 |
 | 409 | `PENDING_RESERVATION_EXISTS` | 이 회차에 이미 결제 대기 중인 예매가 있음 |
 | 409 | `SEAT_NOT_AVAILABLE` | 고른 좌석 중 하나라도 선점·판매됨 (전부 실패) |
+
+- 내 예매 상세(`GET /api/v1/me/reservations/{id}`)도 위 응답과 같은 모양이다. 내 예매 목록은 `seats`를 뺀 모양을 최근 예매부터 준다.
+- 결제 대기 예매가 선점 시간(10분)을 넘기면 서버가 30초마다 `EXPIRED`로 바꾸고 좌석을 돌려놓는다. 이미 시간이 지난 자기 예매가 있는 상태에서 같은 회차를 다시 선점하면, 그 예매를 바로 만료시키고 새로 선점한다.
+
+### 선점 취소 — `POST /api/v1/reservations/{reservationId}/cancel`
+
+본문 없음. `204 No Content`. 좌석은 바로 다시 살 수 있게 된다.
+
+| 상태 | code | 상황 |
+| --- | --- | --- |
+| 404 | `RESERVATION_NOT_FOUND` | 예매가 없거나 본인 예매가 아님 |
+| 409 | `RESERVATION_NOT_PENDING` | 결제 대기 상태가 아님 (이미 취소·만료·결제됨) |
 
 ### 결제 — `POST /api/v1/payments`
 

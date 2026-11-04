@@ -33,7 +33,8 @@ reservation/
 │   ├── ReservationRepository.java
 │   └── projection/            조회 전용 record (Projection)
 ├── domain/                    엔티티, 상태 enum, 도메인 규칙
-└── exception/                 에러 코드 enum (ReservationErrorCode)
+├── exception/                 에러 코드 enum (ReservationErrorCode)
+└── scheduler/                 주기적으로 도는 작업 (ReservationExpiryScheduler)
 ```
 
 필요 없는 하위 패키지는 만들지 않는다. 예를 들어 조회 전용 record가 없으면 `projection/`도 없다.
@@ -54,6 +55,7 @@ controller → service → repository → domain
 
 - 다른 모듈은 그 모듈의 **서비스**를 통해서만 쓴다. 다른 모듈의 리포지토리와 엔티티를 직접 쓰지 않는다.
 - 다른 애그리거트는 ID로 참조한다([ADR 0002](adr/0002-reference-other-aggregates-by-id.md)).
+- 예외: 여러 모듈의 데이터를 묶어 보여 주는 **조회**는 JPQL에서 다른 모듈의 테이블을 조인해 projection으로 읽어도 된다(예: 내 예매 목록의 공연 제목). 다른 모듈의 데이터를 **바꾸는** 일은 항상 그 모듈의 서비스를 거친다.
 - 모듈 사이 호출은 [도메인 설계의 의존 방향](domain.md#의존-방향)을 따른다. 순환을 만들지 않는다.
 - `global`은 업무 모듈에 의존하지 않는다.
 
@@ -117,6 +119,7 @@ controller → service → repository → domain
 - 테스트 메서드 이름은 한국어로 "무엇을 하면 어떻게 된다"를 쓴다. 예: `결제_대기_예매는_회원과_회차마다_하나뿐이다`.
 - 버그를 고칠 때는 그 버그를 재현하는 테스트를 먼저 만든다.
 - 동시성 테스트는 `@Transactional`을 붙이지 않는다. 요청마다 각자 커밋해야 경합이 재현된다. 스레드를 모두 준비시킨 뒤 한꺼번에 출발시킨다(`PointConcurrencyTest` 참고).
+- "실패하면 아무것도 바뀌지 않는다"를 확인하는 테스트도 `@Transactional`을 붙이지 않는다. 테스트 트랜잭션 안에서는 실패한 요청의 변경이 DB에 반영되지 않은 채 남아 있어 롤백 여부를 확인할 수 없다. 이런 테스트는 테스트마다 새 회원·새 회차를 만들어 데이터를 나눈다(`ReservationApiTest` 참고).
 - 테스트는 Docker가 실행 중이어야 돈다.
 
 ## 8. 브랜치와 PR
