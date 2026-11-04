@@ -22,6 +22,9 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     Optional<Reservation> findByIdAndUserId(Long id, Long userId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<Reservation> findWithLockById(Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Reservation> findByUserIdAndPerformanceIdAndStatus(
             Long userId, Long performanceId, ReservationStatus status);
 
@@ -40,18 +43,24 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     @Query(value = """
             select new com.ticatch.reservation.repository.projection.ReservationSummaryProjection(
-                r.id, r.performanceId, c.title, p.startsAt, r.status, r.totalAmount, r.expiresAt, r.createdAt)
-            from Reservation r, Performance p, Concert c
-            where p.id = r.performanceId and c.id = p.concertId and r.userId = :userId
+                r.id, r.performanceId, c.title, p.startsAt, r.status, r.totalAmount, r.expiresAt, r.createdAt, pay.id)
+            from Reservation r
+            join Performance p on p.id = r.performanceId
+            join Concert c on c.id = p.concertId
+            left join Payment pay on pay.reservationId = r.id
+            where r.userId = :userId
             """,
             countQuery = "select count(r) from Reservation r where r.userId = :userId")
     Page<ReservationSummaryProjection> findSummaries(@Param("userId") Long userId, Pageable pageable);
 
     @Query(value = """
             select new com.ticatch.reservation.repository.projection.ReservationSummaryProjection(
-                r.id, r.performanceId, c.title, p.startsAt, r.status, r.totalAmount, r.expiresAt, r.createdAt)
-            from Reservation r, Performance p, Concert c
-            where p.id = r.performanceId and c.id = p.concertId and r.userId = :userId and r.status = :status
+                r.id, r.performanceId, c.title, p.startsAt, r.status, r.totalAmount, r.expiresAt, r.createdAt, pay.id)
+            from Reservation r
+            join Performance p on p.id = r.performanceId
+            join Concert c on c.id = p.concertId
+            left join Payment pay on pay.reservationId = r.id
+            where r.userId = :userId and r.status = :status
             """,
             countQuery = "select count(r) from Reservation r where r.userId = :userId and r.status = :status")
     Page<ReservationSummaryProjection> findSummariesByStatus(
@@ -59,9 +68,12 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     @Query("""
             select new com.ticatch.reservation.repository.projection.ReservationSummaryProjection(
-                r.id, r.performanceId, c.title, p.startsAt, r.status, r.totalAmount, r.expiresAt, r.createdAt)
-            from Reservation r, Performance p, Concert c
-            where p.id = r.performanceId and c.id = p.concertId and r.id = :id and r.userId = :userId
+                r.id, r.performanceId, c.title, p.startsAt, r.status, r.totalAmount, r.expiresAt, r.createdAt, pay.id)
+            from Reservation r
+            join Performance p on p.id = r.performanceId
+            join Concert c on c.id = p.concertId
+            left join Payment pay on pay.reservationId = r.id
+            where r.id = :id and r.userId = :userId
             """)
     Optional<ReservationSummaryProjection> findSummary(@Param("id") Long id, @Param("userId") Long userId);
 

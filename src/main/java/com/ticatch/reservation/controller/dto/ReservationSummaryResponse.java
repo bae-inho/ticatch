@@ -13,7 +13,8 @@ public record ReservationSummaryResponse(
         ReservationStatus status,
         long totalAmount,
         OffsetDateTime expiresAt,
-        OffsetDateTime createdAt) {
+        OffsetDateTime createdAt,
+        Long paymentId) {
 
     public static ReservationSummaryResponse from(ReservationSummaryResult reservation) {
         return new ReservationSummaryResponse(
@@ -24,6 +25,7 @@ public record ReservationSummaryResponse(
                 reservation.status(),
                 reservation.totalAmount(),
                 KoreaTime.of(reservation.expiresAt()),
-                KoreaTime.of(reservation.createdAt()));
+                KoreaTime.of(reservation.createdAt()),
+                reservation.paymentId());
     }
 }

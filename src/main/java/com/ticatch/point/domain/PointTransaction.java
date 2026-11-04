@@ -58,6 +58,27 @@ public class PointTransaction extends CreatedAtEntity {
         return transaction;
     }
 
+    /** 결제로 차감한 기록. 멱등성 키는 결제가 갖는다. */
+    public static PointTransaction pay(Long walletId, long amount, long balanceAfter, Long paymentId) {
+        return ofPayment(PointTransactionType.PAY, walletId, amount, balanceAfter, paymentId);
+    }
+
+    /** 환불로 돌려준 기록. */
+    public static PointTransaction refund(Long walletId, long amount, long balanceAfter, Long paymentId) {
+        return ofPayment(PointTransactionType.REFUND, walletId, amount, balanceAfter, paymentId);
+    }
+
+    private static PointTransaction ofPayment(
+            PointTransactionType type, Long walletId, long amount, long balanceAfter, Long paymentId) {
+        PointTransaction transaction = new PointTransaction();
+        transaction.walletId = walletId;
+        transaction.type = type;
+        transaction.amount = amount;
+        transaction.balanceAfter = balanceAfter;
+        transaction.paymentId = paymentId;
+        return transaction;
+    }
+
     /** 같은 멱등성 키로 다시 온 충전 요청이 처음 요청과 같은가. */
     public boolean isSameChargeAs(Long walletId, long amount) {
         return type == PointTransactionType.CHARGE && this.walletId.equals(walletId) && this.amount == amount;

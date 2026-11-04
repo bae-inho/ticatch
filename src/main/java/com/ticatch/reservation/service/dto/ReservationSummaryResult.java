@@ -12,7 +12,8 @@ public record ReservationSummaryResult(
         ReservationStatus status,
         long totalAmount,
         Instant expiresAt,
-        Instant createdAt) {
+        Instant createdAt,
+        Long paymentId) {
 
     public static ReservationSummaryResult from(ReservationSummaryProjection row) {
         return new ReservationSummaryResult(
@@ -23,6 +24,7 @@ public record ReservationSummaryResult(
                 row.status(),
                 row.totalAmount(),
                 row.expiresAt(),
-                row.createdAt());
+                row.createdAt(),
+                row.paymentId());
     }
 }

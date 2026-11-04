@@ -37,6 +37,9 @@ public class Reservation extends BaseEntity {
     /** 선점 유효 시간(docs/requirements.md 5절). */
     public static final Duration HOLD_DURATION = Duration.ofMinutes(10);
 
+    /** 관람객은 공연 시작 이 시간 전까지만 확정된 예매를 취소할 수 있다(docs/requirements.md 5절). */
+    public static final Duration REFUND_DEADLINE_BEFORE_START = Duration.ofHours(24);
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -88,6 +91,26 @@ public class Reservation extends BaseEntity {
     public void expire() {
         requirePending();
         status = ReservationStatus.EXPIRED;
+    }
+
+    /**
+     * 결제로 예매를 확정한다. 스케줄러가 아직 만료시키지 않았어도 선점 시간이 지났으면 실패한다.
+     * 만료의 정확성은 스케줄러가 아니라 여기서 지킨다(docs/domain.md 7절).
+     */
+    public void confirm(Instant now) {
+        requirePending();
+        if (isOverdue(now)) {
+            throw new BusinessException(ReservationErrorCode.RESERVATION_EXPIRED);
+        }
+        status = ReservationStatus.CONFIRMED;
+    }
+
+    /** 결제한 예매를 환불하며 취소한다. 확정된 예매에만 부른다. */
+    public void cancelConfirmed() {
+        if (status != ReservationStatus.CONFIRMED) {
+            throw new IllegalStateException("확정된 예매만 환불로 취소할 수 있다. reservationId=" + id + ", status=" + status);
+        }
+        status = ReservationStatus.CANCELED;
     }
 
     public boolean isOverdue(Instant now) {

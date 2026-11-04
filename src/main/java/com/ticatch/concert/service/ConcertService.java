@@ -78,6 +78,13 @@ public class ConcertService {
         return PerformanceResult.of(performance, venue, isOnSale(concert, performance));
     }
 
+    /** 회차의 공연 시작 시각. 공개 여부와 관계없이 준다. 환불 마감을 계산할 때 쓴다. */
+    public Instant getStartsAt(Long performanceId) {
+        return performanceRepository.findById(performanceId)
+                .orElseThrow(() -> new BusinessException(ConcertErrorCode.PERFORMANCE_NOT_FOUND))
+                .getStartsAt();
+    }
+
     private ConcertDetailResult detailOf(Concert concert) {
         List<Performance> performances = performanceRepository.findAllByConcertIdOrderByStartsAt(concert.getId());
         Map<Long, Venue> venues = venueRepository
