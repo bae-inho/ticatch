@@ -1,13 +1,17 @@
 package com.ticatch.user.service;
 
 import com.ticatch.global.exception.BusinessException;
+import com.ticatch.global.exception.CommonErrorCode;
 import com.ticatch.point.service.PointService;
+import com.ticatch.reservation.service.ReservationService;
 import com.ticatch.user.domain.User;
 import com.ticatch.user.domain.UserStatus;
 import com.ticatch.user.exception.UserErrorCode;
 import com.ticatch.user.repository.UserRepository;
 import com.ticatch.user.service.dto.SignUpCommand;
 import com.ticatch.user.service.dto.UserResult;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -23,6 +27,8 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final PointService pointService;
+    private final ReservationService reservationService;
+    private final Clock clock;
 
     /** 회원을 만들고 포인트 지갑을 연다. 모든 회원은 지갑을 하나 가진다(docs/domain.md 1절). */
     @Transactional
@@ -52,5 +58,23 @@ public class UserService {
         return userRepository.findById(userId)
                 .filter(User::isActive)
                 .map(UserResult::from);
+    }
+
+    /**
+     * 비밀번호를 확인하고 탈퇴시킨다. 아직 시작하지 않은 회차에 결제 대기·확정 예매가 있으면 탈퇴할 수 없다.
+     * 탈퇴 뒤에는 로그인과 토큰 재발급이 막히고, 같은 이메일로 다시 가입할 수 있다.
+     */
+    @Transactional
+    public void withdraw(Long userId, String rawPassword) {
+        User user = userRepository.findById(userId)
+                .filter(User::isActive)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHORIZED));
+        if (!passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
+            throw new BusinessException(UserErrorCode.PASSWORD_MISMATCH);
+        }
+        if (reservationService.hasUpcomingActiveReservation(userId)) {
+            throw new BusinessException(UserErrorCode.ACTIVE_RESERVATION_EXISTS);
+        }
+        user.withdraw(Instant.now(clock));
     }
 }

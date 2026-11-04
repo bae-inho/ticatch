@@ -1,5 +1,7 @@
 package com.ticatch.concert.domain;
 
+import com.ticatch.concert.exception.ConcertErrorCode;
+import com.ticatch.global.exception.BusinessException;
 import com.ticatch.global.jpa.BaseEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -77,5 +79,13 @@ public class Performance extends BaseEntity {
         SeatGrade grade = SeatGrade.create(name, price);
         seatGrades.add(grade);
         return grade;
+    }
+
+    /** 회차를 취소한다. 예매 취소·환불은 이 회차를 잠근 같은 트랜잭션에서 이어서 한다. */
+    public void cancel() {
+        if (status == PerformanceStatus.CANCELED) {
+            throw new BusinessException(ConcertErrorCode.PERFORMANCE_ALREADY_CANCELED);
+        }
+        status = PerformanceStatus.CANCELED;
     }
 }

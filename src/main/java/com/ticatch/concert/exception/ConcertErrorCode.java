@@ -10,6 +10,7 @@ public enum ConcertErrorCode implements ErrorCode {
     CONCERT_HAS_NO_PERFORMANCE(HttpStatus.CONFLICT, "회차가 하나 이상 있어야 공개할 수 있습니다."),
     PERFORMANCE_NOT_FOUND(HttpStatus.NOT_FOUND, "회차를 찾을 수 없습니다."),
     PERFORMANCE_NOT_ON_SALE(HttpStatus.CONFLICT, "지금은 이 회차를 예매할 수 없습니다."),
+    PERFORMANCE_ALREADY_CANCELED(HttpStatus.CONFLICT, "이미 취소된 회차입니다."),
     VENUE_NOT_FOUND(HttpStatus.NOT_FOUND, "공연장을 찾을 수 없습니다.");
 
     private final HttpStatus status;

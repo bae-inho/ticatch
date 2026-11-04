@@ -18,6 +18,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -69,7 +70,43 @@ public class ConcertService {
 
     /** 관람객이 볼 수 있는 회차. 공개되지 않은 공연의 회차는 없는 것처럼 404다. */
     public PerformanceResult getOpenPerformance(Long performanceId) {
-        Performance performance = performanceRepository.findById(performanceId)
+        return openPerformanceResult(performanceRepository.findById(performanceId));
+    }
+
+    /**
+     * 선점용. {@link #getOpenPerformance}와 같지만 회차 행을 공유 잠금으로 잡는다.
+     * 선점이 끝날 때까지 회차 취소가 기다리고, 회차 취소 중에는 선점이 기다린다(ADR 0009).
+     */
+    @Transactional
+    public PerformanceResult lockOpenPerformance(Long performanceId) {
+        return openPerformanceResult(performanceRepository.findWithShareLockById(performanceId));
+    }
+
+    /** 환불용. 회차 행을 공유 잠금으로 잡아 회차 취소와 동시에 일어나지 않게 한다(ADR 0009). */
+    @Transactional
+    public void lockPerformance(Long performanceId) {
+        performanceRepository.findWithShareLockById(performanceId)
+                .orElseThrow(() -> new BusinessException(ConcertErrorCode.PERFORMANCE_NOT_FOUND));
+    }
+
+    /** 관리자용. 공개 여부와 관계없이 회차를 준다. */
+    public PerformanceResult getPerformance(Long performanceId) {
+        Performance performance = findPerformance(performanceId);
+        Concert concert = concertRepository.getReferenceById(performance.getConcertId());
+        return PerformanceResult.of(
+                performance, venueRepository.getReferenceById(performance.getVenueId()), isOnSale(concert, performance));
+    }
+
+    /** 회차를 취소 상태로 바꾼다. 회차 행을 배타 잠금으로 잡고, 같은 트랜잭션에서 예매 취소·환불을 이어서 한다. */
+    @Transactional
+    public void cancelPerformance(Long performanceId) {
+        performanceRepository.findWithLockById(performanceId)
+                .orElseThrow(() -> new BusinessException(ConcertErrorCode.PERFORMANCE_NOT_FOUND))
+                .cancel();
+    }
+
+    private PerformanceResult openPerformanceResult(Optional<Performance> found) {
+        Performance performance = found
                 .orElseThrow(() -> new BusinessException(ConcertErrorCode.PERFORMANCE_NOT_FOUND));
         Concert concert = concertRepository.findById(performance.getConcertId())
                 .filter(Concert::isOpen)
@@ -78,11 +115,14 @@ public class ConcertService {
         return PerformanceResult.of(performance, venue, isOnSale(concert, performance));
     }
 
+    private Performance findPerformance(Long performanceId) {
+        return performanceRepository.findById(performanceId)
+                .orElseThrow(() -> new BusinessException(ConcertErrorCode.PERFORMANCE_NOT_FOUND));
+    }
+
     /** 회차의 공연 시작 시각. 공개 여부와 관계없이 준다. 환불 마감을 계산할 때 쓴다. */
     public Instant getStartsAt(Long performanceId) {
-        return performanceRepository.findById(performanceId)
-                .orElseThrow(() -> new BusinessException(ConcertErrorCode.PERFORMANCE_NOT_FOUND))
-                .getStartsAt();
+        return findPerformance(performanceId).getStartsAt();
     }
 
     private ConcertDetailResult detailOf(Concert concert) {

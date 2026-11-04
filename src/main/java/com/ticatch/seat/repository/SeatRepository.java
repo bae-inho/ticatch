@@ -2,6 +2,7 @@ package com.ticatch.seat.repository;
 
 import com.ticatch.seat.domain.Seat;
 import com.ticatch.seat.domain.SeatStatus;
+import com.ticatch.seat.repository.projection.SeatGradeSalesProjection;
 import com.ticatch.seat.repository.projection.SeatGradeStockProjection;
 import com.ticatch.seat.repository.projection.SeatProjection;
 import jakarta.persistence.LockModeType;
@@ -47,4 +48,14 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
             """)
     List<SeatGradeStockProjection> countByGrade(
             @Param("performanceId") Long performanceId, @Param("status") SeatStatus status);
+
+    @Query("""
+            select new com.ticatch.seat.repository.projection.SeatGradeSalesProjection(
+                s.seatGradeId, count(s), sum(case when s.status = :sold then 1 else 0 end))
+            from Seat s
+            where s.performanceId = :performanceId
+            group by s.seatGradeId
+            """)
+    List<SeatGradeSalesProjection> countSalesByGrade(
+            @Param("performanceId") Long performanceId, @Param("sold") SeatStatus sold);
 }

@@ -4,6 +4,7 @@ import com.ticatch.global.exception.BusinessException;
 import com.ticatch.global.exception.CommonErrorCode;
 import com.ticatch.user.controller.dto.SignUpRequest;
 import com.ticatch.user.controller.dto.UserResponse;
+import com.ticatch.user.controller.dto.WithdrawRequest;
 import com.ticatch.user.service.UserService;
 import com.ticatch.user.service.dto.UserResult;
 import jakarta.validation.Valid;
@@ -37,5 +38,11 @@ public class UserController {
         UserResult user = userService.findActiveUser(Long.valueOf(jwt.getSubject()))
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHORIZED));
         return UserResponse.from(user);
+    }
+
+    @PostMapping("/me/withdraw")
+    public ResponseEntity<Void> withdraw(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody WithdrawRequest request) {
+        userService.withdraw(Long.valueOf(jwt.getSubject()), request.password());
+        return ResponseEntity.noContent().build();
     }
 }

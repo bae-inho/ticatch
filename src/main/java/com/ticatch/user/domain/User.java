@@ -58,4 +58,10 @@ public class User extends BaseEntity {
     public boolean isActive() {
         return status == UserStatus.ACTIVE;
     }
+
+    /** 탈퇴 표시만 하고 행은 지우지 않는다. 결제·환불 기록이 회원을 가리키기 때문이다(docs/domain.md 4절). */
+    public void withdraw(Instant now) {
+        status = UserStatus.WITHDRAWN;
+        withdrawnAt = now;
+    }
 }
