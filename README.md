@@ -31,7 +31,12 @@
    curl http://localhost:8080/actuator/health
    ```
 
-DB 접속 정보는 [application.yml](src/main/resources/application.yml)의 기본값을 쓴다. 다른 DB에 붙으려면 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` 환경 변수를 넣는다.
+DB 접속 정보와 토큰 서명 키는 [application.yml](src/main/resources/application.yml)의 로컬 기본값을 쓴다. 바꾸려면 아래 환경 변수를 넣는다.
+
+| 환경 변수 | 뜻 |
+| --- | --- |
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | PostgreSQL 접속 정보 |
+| `JWT_SECRET` | access token 서명 키. 32바이트 이상. 로컬이 아닌 곳에 띄울 때는 반드시 다른 값을 넣는다 |
 
 ## 테스트
 

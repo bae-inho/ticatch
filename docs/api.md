@@ -21,7 +21,16 @@
 
 - 로그인하면 받는 access token을 `Authorization: Bearer <token>` 헤더로 보낸다.
 - **사용자 식별은 토큰으로만 한다.** 경로나 본문으로 `userId`를 받지 않는다. 이전 버전은 `/users/{userId}/...`로 받아 남의 예매를 결제·환불할 수 있었다.
-- 토큰의 수명, 재발급, 저장 방식은 5단계(인증)에서 정한다.
+- 토큰은 두 가지다. 자세한 이유는 [ADR 0007](adr/0007-authenticate-with-jwt-access-token-and-stored-refresh-token.md)에 있다.
+
+| 토큰 | 수명 | 쓰는 곳 | 서버 저장 |
+| --- | --- | --- | --- |
+| access token (JWT) | 30분 | 모든 API의 `Authorization` 헤더 | 저장하지 않는다. 서명과 만료 시각만 검증한다 |
+| refresh token | 14일 | `/auth/refresh`로 새 토큰 한 쌍을 받을 때 | 해시를 DB에 저장한다. 한 번 쓰면 폐기한다 |
+
+- 클라이언트는 `401`을 받으면 refresh token으로 한 번만 재발급을 시도한다. 재발급도 `401`이면 다시 로그인하게 한다. 만료와 위조를 다른 코드로 나누지 않으므로, 클라이언트는 이유와 관계없이 이 순서를 따른다.
+- 로그아웃은 refresh token을 폐기한다. 이미 발급한 access token은 남은 수명(최대 30분) 동안 유효하다.
+- 토큰 없이 부를 수 있는 API는 회원가입, 로그인, 토큰 재발급, 공연 조회(`GET /concerts/**`, `GET /performances/**`), 상태 확인(`/actuator/health`)뿐이다.
 
 ### 요청·응답 형식
 
@@ -215,6 +224,48 @@ Spring의 `Page` 객체를 그대로 응답하지 않는다. `Page`의 JSON 모�
 모든 관리자 API는 `ADMIN` 권한이 필요하다.
 
 ## 4. 핵심 API 상세
+
+### 로그인 — `POST /api/v1/auth/login`
+
+```json
+{
+  "email": "user@ticatch.com",
+  "password": "password1234"
+}
+```
+
+`200 OK`
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+  "accessTokenExpiresIn": 1800,
+  "refreshToken": "q3Jx0b9w4pQ..."
+}
+```
+
+| 상태 | code | 상황 |
+| --- | --- | --- |
+| 400 | `INVALID_INPUT` | 이메일이나 비밀번호가 비어 있음 |
+| 401 | `LOGIN_FAILED` | 가입하지 않은 이메일이거나 비밀번호가 틀림 (어느 쪽인지 알려 주지 않는다) |
+
+### 토큰 재발급 — `POST /api/v1/auth/refresh`
+
+```json
+{
+  "refreshToken": "q3Jx0b9w4pQ..."
+}
+```
+
+`200 OK`. 응답은 로그인과 같다. 보낸 refresh token은 폐기되므로 응답의 새 refresh token을 저장해야 한다.
+
+| 상태 | code | 상황 |
+| --- | --- | --- |
+| 401 | `INVALID_REFRESH_TOKEN` | 없거나, 만료됐거나, 이미 쓴 refresh token |
+
+### 로그아웃 — `POST /api/v1/auth/logout`
+
+access token이 필요하다. 본문은 재발급과 같다(`refreshToken`). `204 No Content`. 이미 폐기된 토큰이어도 `204`다.
 
 ### 좌석 선점 — `POST /api/v1/reservations`
 
@@ -411,8 +462,7 @@ Spring의 `Page` 객체를 그대로 응답하지 않는다. `Page`의 JSON 모�
 | `INVALID_INPUT` | 400 | 입력 형식·범위 오류. `errors`에 필드별 사유가 있다 |
 | `IDEMPOTENCY_KEY_REQUIRED` | 400 | `Idempotency-Key` 헤더가 필요함 |
 | `IDEMPOTENCY_KEY_CONFLICT` | 409 | 같은 키로 다른 요청을 보냄 |
-| `UNAUTHORIZED` | 401 | 토큰이 없거나 올바르지 않음 |
-| `TOKEN_EXPIRED` | 401 | access token이 만료됨. 재발급하면 된다 |
+| `UNAUTHORIZED` | 401 | 토큰이 없거나, 서명이 틀렸거나, 만료됨 |
 | `FORBIDDEN` | 403 | 권한 없음 (관리자 API) |
 | `NOT_FOUND` | 404 | 존재하지 않는 경로 |
 | `METHOD_NOT_ALLOWED` | 405 | 지원하지 않는 HTTP 메서드. `Allow` 헤더에 허용 메서드가 있다 |
@@ -421,9 +471,7 @@ Spring의 `Page` 객체를 그대로 응답하지 않는다. `Page`의 JSON 모�
 
 읽을 수 없는 JSON, 없는 경로처럼 스프링이 직접 내는 오류도 이 표의 코드로 바꿔 보낸다. 표에 전용 코드가 없는 4xx는 `400 INVALID_INPUT`으로, 5xx는 `500 INTERNAL_ERROR`로 보낸다.
 
-`TOKEN_EXPIRED`를 `UNAUTHORIZED`와 나눈 이유: 클라이언트가 만료일 때만 재발급을 시도하고, 그 밖의 경우에는 다시 로그인하게 하려는 것이다.
-
-### 회원
+### 회원·인증
 
 | code | 상태 | 뜻 |
 | --- | --- | --- |

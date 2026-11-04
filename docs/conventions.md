@@ -9,6 +9,7 @@
 ```text
 com.ticatch
 ├── user/            회원, 로그인 계정
+├── auth/            로그인, 토큰 발급·재발급, 로그아웃
 ├── point/           포인트 지갑, 거래
 ├── concert/         공연, 회차, 좌석 등급, 공연장
 ├── seat/            좌석과 판매 상태
@@ -78,6 +79,8 @@ controller → service → repository → domain
 - 엔티티에는 `@Setter`와 `@Data`를 쓰지 않는다. 상태는 의미 있는 이름의 메서드(`confirm()`, `cancel()`)로만 바꾼다.
 - 엔티티의 기본 생성자는 `protected`다(`@NoArgsConstructor(access = AccessLevel.PROTECTED)`). JPA만 쓰고, 코드에서는 정적 생성 메서드나 생성자로 만든다.
 - 시각은 `Instant`로 다루고 "지금"은 주입받은 `Clock`에서 얻는다([ADR 0005](adr/0005-store-time-as-timestamptz-and-instant.md)).
+- 엔티티는 `global.jpa.BaseEntity`를 상속해 `created_at`, `updated_at`을 자동으로 채운다. 만든 뒤 바뀌지 않는 행은 `CreatedAtEntity`를 상속한다.
+- 로그인한 회원은 컨트롤러에서 `@AuthenticationPrincipal Jwt jwt`로 받고, `Long.valueOf(jwt.getSubject())`가 회원 ID다. 회원 ID를 경로나 본문으로 받지 않는다.
 
 ## 5. 예외와 에러 응답
 

@@ -39,3 +39,4 @@
 | [0004](0004-error-response-uses-problem-details.md) | 성공 응답은 감싸지 않고, 에러는 Problem Details로 보낸다 | 채택 |
 | [0005](0005-store-time-as-timestamptz-and-instant.md) | 시각은 timestamptz와 Instant로 다루고, API에서 한국 시간으로 바꾼다 | 채택 |
 | [0006](0006-business-errors-use-one-exception-and-module-error-codes.md) | 업무 에러는 예외 클래스 하나와 모듈별 에러 코드 enum으로 표현한다 | 채택 |
+| [0007](0007-authenticate-with-jwt-access-token-and-stored-refresh-token.md) | 인증은 JWT access token과 DB에 저장한 refresh token으로 한다 | 채택 |

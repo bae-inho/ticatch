@@ -9,6 +9,7 @@
 | 모듈 | 애그리거트 (루트 → 내부) | 책임 |
 | --- | --- | --- |
 | `user` | `User` | 가입, 로그인 계정, 역할, 탈퇴 |
+| `auth` | `RefreshToken` | 로그인, 토큰 발급·재발급, 로그아웃 |
 | `point` | `PointWallet` → `PointTransaction` | 포인트 잔액과 충전·결제·환불 거래 기록 |
 | `concert` | `Concert` / `Performance` → `SeatGrade` / `Venue` | 공연, 회차, 등급별 가격, 공연장 |
 | `seat` | `Seat` | 좌석 하나와 판매 상태 |
@@ -39,9 +40,11 @@ flowchart LR
     seat --> concert
     user --> point
     user --> reservation
+    auth --> user
 ```
 
 - `concert`, `point`는 다른 업무 모듈을 호출하지 않는다.
+- 로그인과 재발급 때 `auth`가 `user`에 회원 확인을 맡긴다. 비밀번호 해시는 `user`만 다룬다.
 - 회원 가입 때 `user`가 `point`를 호출해 지갑을 만든다. 모든 회원은 지갑을 하나 가진다.
 - 탈퇴 전에 `user`가 `reservation`에 진행 중인 예매가 있는지 묻는다.
 
@@ -132,6 +135,7 @@ stateDiagram-v2
 ```mermaid
 erDiagram
     USERS ||--|| POINT_WALLET : owns
+    USERS ||--o{ REFRESH_TOKEN : "logged in with"
     POINT_WALLET ||--o{ POINT_TRANSACTION : records
     CONCERT ||--o{ PERFORMANCE : has
     VENUE ||--o{ PERFORMANCE : hosts
@@ -153,6 +157,12 @@ erDiagram
         varchar role "USER, ADMIN"
         varchar status "ACTIVE, WITHDRAWN"
         timestamp withdrawn_at
+    }
+    REFRESH_TOKEN {
+        bigint id PK
+        bigint user_id FK
+        varchar token_hash UK "원문이 아닌 SHA-256 해시"
+        timestamp expires_at
     }
     POINT_WALLET {
         bigint id PK
