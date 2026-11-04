@@ -13,6 +13,7 @@ import com.ticatch.seat.repository.projection.SeatGradeStockProjection;
 import com.ticatch.seat.repository.projection.SeatProjection;
 import com.ticatch.seat.service.dto.CreateSeatsCommand;
 import com.ticatch.seat.service.dto.HeldSeatResult;
+import com.ticatch.seat.service.dto.SeatGradeSalesResult;
 import com.ticatch.seat.service.dto.SeatGradeStockResult;
 import com.ticatch.seat.service.dto.SeatGradeStockResult.GradeStock;
 import com.ticatch.seat.service.dto.SeatMapResult;
@@ -78,6 +79,13 @@ public class SeatService {
     @Transactional
     public void releaseSold(List<Long> seatIds) {
         seatRepository.findAllById(seatIds).forEach(Seat::releaseSold);
+    }
+
+    /** 회차의 등급별 전체 좌석 수와 판매된 좌석 수. 관리자 판매 현황에 쓴다. */
+    public List<SeatGradeSalesResult> getSalesByGrade(Long performanceId) {
+        return seatRepository.countSalesByGrade(performanceId, SeatStatus.SOLD).stream()
+                .map(SeatGradeSalesResult::from)
+                .toList();
     }
 
     /** 공개된 공연의 회차에 대해 등급별 가격과 남은 좌석 수를 준다. */

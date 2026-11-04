@@ -47,7 +47,7 @@ public class ReservationService {
     @Transactional
     public ReservationDetailResult hold(HoldSeatsCommand command) {
         Instant now = Instant.now(clock);
-        PerformanceResult performance = concertService.getOpenPerformance(command.performanceId());
+        PerformanceResult performance = concertService.lockOpenPerformance(command.performanceId());
         if (!performance.onSale()) {
             throw new BusinessException(ConcertErrorCode.PERFORMANCE_NOT_ON_SALE);
         }
@@ -85,6 +85,12 @@ public class ReservationService {
         findOwnForUpdate(userId, reservationId);
     }
 
+    /** 예매가 속한 회차 행을 공유 잠금으로 잡는다. 환불이 결제 행을 잠그기 전에 부른다(ADR 0009). */
+    @Transactional
+    public void lockPerformanceOf(Long reservationId) {
+        concertService.lockPerformance(reservationRepository.findPerformanceIdById(reservationId).orElseThrow());
+    }
+
     /** 결제로 예매를 확정하고 좌석을 판매 상태로 바꾼다. 결제할 금액(선점 시점 가격의 합)을 돌려준다. */
     @Transactional
     public long confirm(Long userId, Long reservationId) {
@@ -105,6 +111,32 @@ public class ReservationService {
         }
         reservation.cancelConfirmed();
         seatService.releaseSold(reservation.seatIds());
+    }
+
+    /**
+     * 회차의 결제 대기·확정 예매를 모두 취소하고 좌석을 돌려놓는다. 취소한 예매 수를 돌려준다.
+     * 회차 행을 배타 잠금으로 잡은 트랜잭션에서 부르고, 확정 예매의 환불은 결제 모듈이 이어서 한다.
+     */
+    @Transactional
+    public int cancelAllOfPerformance(Long performanceId) {
+        List<Reservation> reservations = reservationRepository.findAllForUpdateByPerformanceIdAndStatusIn(
+                performanceId, List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED));
+        for (Reservation reservation : reservations) {
+            if (reservation.getStatus() == ReservationStatus.CONFIRMED) {
+                reservation.cancelConfirmed();
+                seatService.releaseSold(reservation.seatIds());
+            } else {
+                reservation.cancel();
+                seatService.release(reservation.seatIds());
+            }
+        }
+        return reservations.size();
+    }
+
+    /** 아직 시작하지 않은 회차에 결제 대기·확정 예매가 있는가. 회원 탈퇴 전에 확인한다. */
+    public boolean hasUpcomingActiveReservation(Long userId) {
+        return reservationRepository.existsUpcoming(
+                userId, List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED), Instant.now(clock));
     }
 
     /**

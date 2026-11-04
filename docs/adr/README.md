@@ -41,3 +41,4 @@
 | [0006](0006-business-errors-use-one-exception-and-module-error-codes.md) | 업무 에러는 예외 클래스 하나와 모듈별 에러 코드 enum으로 표현한다 | 채택 |
 | [0007](0007-authenticate-with-jwt-access-token-and-stored-refresh-token.md) | 인증은 JWT access token과 DB에 저장한 refresh token으로 한다 | 채택 |
 | [0008](0008-hold-seats-with-ordered-pessimistic-locks.md) | 좌석 선점의 기준선은 ID 순서로 잡는 비관적 락이다 | 채택 |
+| [0009](0009-serialize-performance-cancel-with-performance-row-locks.md) | 회차 취소는 회차 행 잠금으로 선점·환불과 줄 세운다 | 채택 |
