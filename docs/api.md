@@ -271,6 +271,22 @@ Spring의 `Page` 객체를 그대로 응답하지 않는다. `Page`의 JSON 모�
 
 access token이 필요하다. 본문은 재발급과 같다(`refreshToken`). `204 No Content`. 이미 폐기된 토큰이어도 `204`다.
 
+### 회원 탈퇴 — `POST /api/v1/me/withdraw`
+
+```json
+{
+  "password": "password1234"
+}
+```
+
+`204 No Content`. 탈퇴하면 로그인과 토큰 재발급이 막히고, 같은 이메일로 다시 가입할 수 있다. 이미 발급된 access token은 남은 수명 동안 유효하다([ADR 0007](adr/0007-authenticate-with-jwt-access-token-and-stored-refresh-token.md)). 남은 포인트와 결제·환불 기록은 지우지 않는다.
+
+| 상태 | code | 상황 |
+| --- | --- | --- |
+| 400 | `INVALID_INPUT` | 비밀번호가 비어 있음 |
+| 400 | `PASSWORD_MISMATCH` | 비밀번호가 틀림 |
+| 409 | `ACTIVE_RESERVATION_EXISTS` | 아직 시작하지 않은 회차에 결제 대기·확정 예매가 있음 |
+
 ### 등급별 잔여 좌석 — `GET /api/v1/performances/{performanceId}/seat-grades`
 
 `200 OK`
@@ -485,7 +501,30 @@ access token이 필요하다. 본문은 재발급과 같다(`refreshToken`). `20
 | 404 | `PERFORMANCE_NOT_FOUND` | 회차가 없음 |
 | 409 | `PERFORMANCE_ALREADY_CANCELED` | 이미 취소된 회차 |
 
-예매가 많은 회차는 한 번에 처리하기 어려울 수 있다([도메인 설계 7절](domain.md#7-받아들인-한계)). 6단계에서 나눠서 처리하기로 하면 응답을 `202 Accepted`로 바꾸고 이 문서를 고친다.
+`canceledReservations`는 취소한 결제 대기·확정 예매 수, `refundedPayments`는 환불한 결제 수다. 공연 시작 24시간 전이 지났어도 전액 환불한다. 회차 상태, 예매, 좌석, 결제, 포인트를 한 트랜잭션으로 바꾸므로 응답을 받으면 모두 끝난 것이다([도메인 설계 7절](domain.md#7-받아들인-한계), [ADR 0009](adr/0009-serialize-performance-cancel-with-performance-row-locks.md)). 취소가 진행되는 동안 같은 회차의 선점·결제·환불 요청은 기다렸다가, 취소가 끝나면 선점은 `PERFORMANCE_NOT_ON_SALE`, 결제는 `RESERVATION_NOT_PENDING`, 환불은 `PAYMENT_ALREADY_REFUNDED`를 받는다.
+
+### 판매 현황 — `GET /api/v1/admin/performances/{performanceId}/sales`
+
+`200 OK`. 취소된 회차도 조회할 수 있다.
+
+```json
+{
+  "performanceId": 10,
+  "totalSeats": 400,
+  "soldSeats": 272,
+  "revenue": 35400000,
+  "seatGrades": [
+    { "seatGradeId": 21, "name": "VIP", "price": 150000, "totalSeats": 100, "soldSeats": 100 },
+    { "seatGradeId": 22, "name": "R", "price": 120000, "totalSeats": 300, "soldSeats": 172 }
+  ]
+}
+```
+
+`soldSeats`는 결제가 끝난(`SOLD`) 좌석 수다. 선점 중인 좌석은 세지 않는다. `revenue`는 환불되지 않은 결제 금액의 합이다. 좌석 수와 매출은 같은 시점의 데이터로 센다.
+
+| 상태 | code | 상황 |
+| --- | --- | --- |
+| 404 | `PERFORMANCE_NOT_FOUND` | 회차가 없음 |
 
 ## 5. 입력 검증 규칙
 
@@ -533,7 +572,7 @@ access token이 필요하다. 본문은 재발급과 같다(`refreshToken`). `20
 | `LOGIN_FAILED` | 401 | 이메일 또는 비밀번호가 틀림 (어느 쪽인지 알려 주지 않는다) |
 | `INVALID_REFRESH_TOKEN` | 401 | refresh token이 없거나, 만료됐거나, 폐기됨 |
 | `PASSWORD_MISMATCH` | 400 | 탈퇴 확인용 비밀번호가 틀림 |
-| `ACTIVE_RESERVATION_EXISTS` | 409 | 결제 대기·확정 예매가 있어 탈퇴할 수 없음 |
+| `ACTIVE_RESERVATION_EXISTS` | 409 | 아직 시작하지 않은 회차에 결제 대기·확정 예매가 있어 탈퇴할 수 없음 |
 
 `PASSWORD_MISMATCH`를 `401`로 하지 않은 이유: 클라이언트가 `401`을 받으면 보통 로그아웃 처리를 한다. 이 경우는 로그인 상태가 정상이고 입력만 틀린 것이다.
 
