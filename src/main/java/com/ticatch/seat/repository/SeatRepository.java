@@ -6,9 +6,11 @@ import com.ticatch.seat.repository.projection.SeatGradeSalesProjection;
 import com.ticatch.seat.repository.projection.SeatGradeStockProjection;
 import com.ticatch.seat.repository.projection.SeatProjection;
 import jakarta.persistence.LockModeType;
+import java.time.Instant;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -22,6 +24,15 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from Seat s where s.performanceId = :performanceId and s.id in :seatIds order by s.id")
     List<Seat> findAllForUpdate(@Param("performanceId") Long performanceId, @Param("seatIds") List<Long> seatIds);
+
+    /** 회차의 선점·판매된 좌석을 한 문장으로 모두 살 수 있는 상태로 되돌린다. 회차 취소가 쓴다. */
+    @Modifying
+    @Query("""
+            update Seat s set s.status = com.ticatch.seat.domain.SeatStatus.AVAILABLE, s.updatedAt = :now
+            where s.performanceId = :performanceId
+              and s.status in (com.ticatch.seat.domain.SeatStatus.HELD, com.ticatch.seat.domain.SeatStatus.SOLD)
+            """)
+    int releaseAllByPerformanceId(@Param("performanceId") Long performanceId, @Param("now") Instant now);
 
     @Query("""
             select new com.ticatch.seat.repository.projection.SeatProjection(s.id, s.label, s.seatGradeId, s.status)

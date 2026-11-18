@@ -2,6 +2,7 @@ package com.ticatch.point.repository;
 
 import com.ticatch.point.domain.PointWallet;
 import jakarta.persistence.LockModeType;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -19,4 +20,9 @@ public interface PointWalletRepository extends JpaRepository<PointWallet, Long> 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select w from PointWallet w where w.userId = :userId")
     Optional<PointWallet> findByUserIdForUpdate(@Param("userId") Long userId);
+
+    /** 여러 회원의 지갑을 회원 ID 순서로 잠그고 읽는다. 여러 지갑을 잠그는 요청끼리 순서가 엇갈리지 않는다. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select w from PointWallet w where w.userId in :userIds order by w.userId")
+    List<PointWallet> findAllByUserIdInForUpdate(@Param("userIds") List<Long> userIds);
 }

@@ -2,11 +2,14 @@ package com.ticatch.payment.repository;
 
 import com.ticatch.payment.domain.Payment;
 import com.ticatch.payment.domain.PaymentStatus;
+import com.ticatch.payment.repository.projection.RefundTargetProjection;
 import jakarta.persistence.LockModeType;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -25,18 +28,25 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Payment> findWithLockById(Long id);
 
-    /**
-     * 회차의 결제를 회원 ID 순서로 읽는다. 회차 취소가 쓴다. 여러 회원의 지갑을 늘 같은 순서로 잠가,
-     * 회차 취소 두 건이 동시에 돌아도 서로를 기다리지 않게 한다.
-     */
+    /** 회차 취소로 환불할 결제 완료 건을 회원 ID 순서로 읽는다. 엔티티 대신 지갑 환불에 필요한 값만 읽는다. */
     @Query("""
-            select p from Payment p
+            select new com.ticatch.payment.repository.projection.RefundTargetProjection(p.id, p.userId, p.amount)
+            from Payment p
             join Reservation r on r.id = p.reservationId
-            where r.performanceId = :performanceId and p.status = :status
+            where r.performanceId = :performanceId and p.status = com.ticatch.payment.domain.PaymentStatus.PAID
             order by p.userId, p.id
             """)
-    List<Payment> findAllByPerformanceIdAndStatus(
-            @Param("performanceId") Long performanceId, @Param("status") PaymentStatus status);
+    List<RefundTargetProjection> findRefundTargets(@Param("performanceId") Long performanceId);
+
+    /** 회차의 결제 완료 건을 한 문장으로 모두 환불 상태로 바꾼다. 회차 취소가 쓴다. */
+    @Modifying
+    @Query("""
+            update Payment p
+            set p.status = com.ticatch.payment.domain.PaymentStatus.REFUNDED, p.refundedAt = :now, p.updatedAt = :now
+            where p.status = com.ticatch.payment.domain.PaymentStatus.PAID
+              and p.reservationId in (select r.id from Reservation r where r.performanceId = :performanceId)
+            """)
+    int refundAllByPerformanceId(@Param("performanceId") Long performanceId, @Param("now") Instant now);
 
     @Query("""
             select coalesce(sum(p.amount), 0) from Payment p

@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -32,11 +33,18 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     @Query("select r.performanceId from Reservation r where r.id = :id")
     Optional<Long> findPerformanceIdById(@Param("id") Long id);
 
-    /** 회차의 진행 중인 예매를 ID 순서로 잠그고 읽는다. 회차 취소가 쓴다. */
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select r from Reservation r where r.performanceId = :performanceId and r.status in :statuses order by r.id")
-    List<Reservation> findAllForUpdateByPerformanceIdAndStatusIn(
-            @Param("performanceId") Long performanceId, @Param("statuses") List<ReservationStatus> statuses);
+    /**
+     * 회차의 결제 대기·확정 예매를 한 문장으로 모두 취소하고 바꾼 행 수를 돌려준다. 회차 취소가 쓴다.
+     * 다른 요청이 바꾸는 중인 예매는 그 요청이 끝날 때까지 기다린 뒤 조건을 다시 확인한다.
+     */
+    @Modifying
+    @Query("""
+            update Reservation r set r.status = com.ticatch.reservation.domain.ReservationStatus.CANCELED, r.updatedAt = :now
+            where r.performanceId = :performanceId
+              and r.status in (com.ticatch.reservation.domain.ReservationStatus.PENDING,
+                               com.ticatch.reservation.domain.ReservationStatus.CONFIRMED)
+            """)
+    int cancelAllByPerformanceId(@Param("performanceId") Long performanceId, @Param("now") Instant now);
 
     /** 아직 시작하지 않은 회차의 결제 대기·확정 예매가 있는가. 회원 탈퇴 조건이다. */
     @Query("""

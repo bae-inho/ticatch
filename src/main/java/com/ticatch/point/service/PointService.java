@@ -5,10 +5,18 @@ import com.ticatch.global.web.IdempotencyErrorCode;
 import com.ticatch.point.domain.PointTransaction;
 import com.ticatch.point.domain.PointTransactionType;
 import com.ticatch.point.domain.PointWallet;
+import com.ticatch.point.repository.PointTransactionBulkRepository;
+import com.ticatch.point.repository.PointTransactionBulkRepository.NewRefund;
 import com.ticatch.point.repository.PointTransactionRepository;
 import com.ticatch.point.repository.PointWalletRepository;
 import com.ticatch.point.service.dto.ChargePointCommand;
 import com.ticatch.point.service.dto.PointTransactionResult;
+import com.ticatch.point.service.dto.RefundCommand;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -22,8 +30,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class PointService {
 
+    private static final int WALLET_LOCK_CHUNK = 1_000;
+
     private final PointWalletRepository pointWalletRepository;
     private final PointTransactionRepository pointTransactionRepository;
+    private final PointTransactionBulkRepository pointTransactionBulkRepository;
+    private final Clock clock;
 
     /** 새 회원의 지갑을 잔액 0으로 만든다. 회원 가입과 같은 트랜잭션에서 부른다. */
     @Transactional
@@ -86,6 +98,28 @@ public class PointService {
         long balanceAfter = wallet.refund(amount);
         pointTransactionRepository.save(PointTransaction.refund(wallet.getId(), amount, balanceAfter, paymentId));
         return balanceAfter;
+    }
+
+    /**
+     * 여러 결제를 한꺼번에 환불한다. 회차 취소가 쓴다. 지갑은 회원 ID 순서로 묶어 잠그고(ADR 0009),
+     * 환불 거래는 JDBC 배치로 넣는다. 한 회원의 환불이 여러 건이면 순서대로 잔액이 늘어난다.
+     */
+    @Transactional
+    public void refundAll(List<RefundCommand> refunds) {
+        List<Long> userIds = refunds.stream().map(RefundCommand::userId).distinct().sorted().toList();
+        Map<Long, PointWallet> wallets = new HashMap<>();
+        for (int from = 0; from < userIds.size(); from += WALLET_LOCK_CHUNK) {
+            List<Long> chunk = userIds.subList(from, Math.min(from + WALLET_LOCK_CHUNK, userIds.size()));
+            pointWalletRepository.findAllByUserIdInForUpdate(chunk)
+                    .forEach(wallet -> wallets.put(wallet.getUserId(), wallet));
+        }
+        List<NewRefund> transactions = refunds.stream()
+                .map(refund -> {
+                    PointWallet wallet = wallets.get(refund.userId());
+                    return new NewRefund(wallet.getId(), refund.amount(), wallet.refund(refund.amount()), refund.paymentId());
+                })
+                .toList();
+        pointTransactionBulkRepository.insertRefunds(transactions, Instant.now(clock));
     }
 
     /** 결제했을 때의 차감 후 잔액. 같은 결제 요청이 다시 왔을 때 처음 응답을 그대로 만들기 위해 쓴다. */
