@@ -43,3 +43,4 @@
 | [0008](0008-hold-seats-with-ordered-pessimistic-locks.md) | 좌석 선점의 기준선은 ID 순서로 잡는 비관적 락이다 | 채택 |
 | [0009](0009-serialize-performance-cancel-with-performance-row-locks.md) | 회차 취소는 회차 행 잠금으로 선점·환불과 줄 세운다 | 채택 |
 | [0010](0010-keep-ordered-pessimistic-lock-for-seat-hold.md) | 좌석 선점은 ID 순서 비관적 락을 유지한다 | 채택 |
+| [0011](0011-cancel-performance-with-set-based-updates.md) | 회차 취소는 한 트랜잭션에서 테이블마다 한 문장으로 바꾼다 | 채택 |
