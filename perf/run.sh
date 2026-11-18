@@ -3,7 +3,7 @@
 # 사용법: perf/run.sh <시나리오>   예: perf/run.sh rush
 set -euo pipefail
 
-scenario="${1:?시나리오 이름을 주세요 (warmup, rush, steady)}"
+scenario="${1:?시나리오 이름을 주세요 (warmup, rush, hot, steady)}"
 cd "$(dirname "$0")/.."
 mkdir -p perf/results
 
