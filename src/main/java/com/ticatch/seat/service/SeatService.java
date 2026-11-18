@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,11 +52,16 @@ public class SeatService {
 
     /**
      * 회차의 좌석들을 모두 선점한다. 하나라도 없거나 이미 선점·판매됐으면 예외를 던지고, 트랜잭션이 되돌려져 아무것도 선점되지 않는다.
-     * 좌석을 ID 순서로 잠근 뒤 상태를 확인한다(ADR 0008).
+     * 좌석을 ID 순서로 잠근 뒤 상태를 확인한다(ADR 0008). 다른 요청이 잠근 좌석이 있으면 기다리지 않고 선점 실패로 본다.
      */
     @Transactional
     public List<HeldSeatResult> hold(Long performanceId, List<Long> seatIds) {
-        List<Seat> seats = seatRepository.findAllForUpdate(performanceId, seatIds);
+        List<Seat> seats;
+        try {
+            seats = seatRepository.findAllForUpdate(performanceId, seatIds);
+        } catch (PessimisticLockingFailureException exception) {
+            throw new BusinessException(SeatErrorCode.SEAT_NOT_AVAILABLE);
+        }
         if (seats.size() != seatIds.size()) {
             throw new BusinessException(SeatErrorCode.SEAT_NOT_FOUND);
         }
