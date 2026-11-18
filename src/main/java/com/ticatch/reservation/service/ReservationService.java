@@ -116,21 +116,13 @@ public class ReservationService {
     /**
      * 회차의 결제 대기·확정 예매를 모두 취소하고 좌석을 돌려놓는다. 취소한 예매 수를 돌려준다.
      * 회차 행을 배타 잠금으로 잡은 트랜잭션에서 부르고, 확정 예매의 환불은 결제 모듈이 이어서 한다.
+     * 예매가 수만 건일 수 있어 엔티티를 하나씩 바꾸지 않고 테이블마다 UPDATE 한 문장으로 바꾼다(ADR 0011).
      */
     @Transactional
     public int cancelAllOfPerformance(Long performanceId) {
-        List<Reservation> reservations = reservationRepository.findAllForUpdateByPerformanceIdAndStatusIn(
-                performanceId, List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED));
-        for (Reservation reservation : reservations) {
-            if (reservation.getStatus() == ReservationStatus.CONFIRMED) {
-                reservation.cancelConfirmed();
-                seatService.releaseSold(reservation.seatIds());
-            } else {
-                reservation.cancel();
-                seatService.release(reservation.seatIds());
-            }
-        }
-        return reservations.size();
+        int canceled = reservationRepository.cancelAllByPerformanceId(performanceId, Instant.now(clock));
+        seatService.releaseAllOfPerformance(performanceId);
+        return canceled;
     }
 
     /** 아직 시작하지 않은 회차에 결제 대기·확정 예매가 있는가. 회원 탈퇴 전에 확인한다. */

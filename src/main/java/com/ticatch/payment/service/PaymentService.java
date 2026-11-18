@@ -6,9 +6,11 @@ import com.ticatch.payment.domain.Payment;
 import com.ticatch.payment.domain.PaymentStatus;
 import com.ticatch.payment.exception.PaymentErrorCode;
 import com.ticatch.payment.repository.PaymentRepository;
+import com.ticatch.payment.repository.projection.RefundTargetProjection;
 import com.ticatch.payment.service.dto.PayCommand;
 import com.ticatch.payment.service.dto.PaymentResult;
 import com.ticatch.point.service.PointService;
+import com.ticatch.point.service.dto.RefundCommand;
 import com.ticatch.reservation.service.ReservationService;
 import java.time.Clock;
 import java.time.Instant;
@@ -85,13 +87,12 @@ public class PaymentService {
      */
     @Transactional
     public int refundAllOfPerformance(Long performanceId) {
-        Instant now = Instant.now(clock);
-        List<Payment> payments = paymentRepository.findAllByPerformanceIdAndStatus(performanceId, PaymentStatus.PAID);
-        for (Payment payment : payments) {
-            payment.refund(now);
-            pointService.refund(payment.getUserId(), payment.getAmount(), payment.getId());
-        }
-        return payments.size();
+        List<RefundTargetProjection> targets = paymentRepository.findRefundTargets(performanceId);
+        paymentRepository.refundAllByPerformanceId(performanceId, Instant.now(clock));
+        pointService.refundAll(targets.stream()
+                .map(target -> new RefundCommand(target.userId(), target.amount(), target.paymentId()))
+                .toList());
+        return targets.size();
     }
 
     /** 회차의 매출. 환불된 결제는 빼고 결제 완료 금액만 더한다. */
