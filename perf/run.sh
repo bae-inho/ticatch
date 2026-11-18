@@ -20,6 +20,12 @@ if [ -f "perf/sql/${scenario}.sql" ]; then
     psql -q -v ON_ERROR_STOP=1 -v reservations="${RESERVATIONS:-1000}" < "perf/sql/${scenario}.sql"
 fi
 
+# 한 행을 여러 트랜잭션이 함께 잠그면 PostgreSQL은 MultiXact를 만든다. 체크포인트로 다음 번호를 확정해 앞뒤를 뺀다.
+next_multixact() {
+    psql -q -tA -c "CHECKPOINT" -c "SELECT next_multixact_id FROM pg_control_checkpoint()" | tail -1
+}
+multixact_before="$(next_multixact)"
+
 waits_file="$(mktemp)"
 psql -q < perf/sql/waits.sql 2> "${waits_file}" &
 sampler=$!
@@ -34,8 +40,10 @@ MSYS_NO_PATHCONV=1 docker run --rm \
 
 psql -q -c "SELECT pg_cancel_backend(pid) FROM pg_stat_activity WHERE application_name = 'perf-waits'" > /dev/null
 wait "${sampler}" || true
+multixact_after="$(next_multixact)"
 
 if [ "${scenario}" != "warmup" ]; then
+    echo "  MultiXact  생성=$((multixact_after - multixact_before))"
     # 앱 연결이 하나라도 일하던 표본만 센다(로그인 같은 준비 단계도 포함된다).
     sed -n 's/.*sample busy=\([0-9]*\) lock=\([0-9]*\).*/\1 \2/p' "${waits_file}" | awk '
         $1 > 0 { n++; busy += $1; lock += $2; if ($1 > maxBusy) maxBusy = $1; if ($2 > maxLock) maxLock = $2 }

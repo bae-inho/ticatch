@@ -93,6 +93,7 @@ RESERVATIONS=50000 BACKGROUND_SECONDS=40 perf/run.sh cancel
 | 그 밖의 실패 | 그 밖의 4xx·5xx. 0이 아니면 원인을 먼저 찾는다 |
 | 놓친 반복 | 부하 도구가 정한 속도로 요청을 보내지 못한 횟수. 0이 아니면 측정 PC가 모자란 것이다 |
 | DB 연결 | 앱 연결 중 일하는 연결 수와 행 잠금을 기다리는 연결 수. 준비 단계(로그인)의 표본도 섞인다 |
+| MultiXact | 측정하는 동안 PostgreSQL이 만든 MultiXact 수. 여러 트랜잭션이 한 행을 함께 잠근 횟수를 짐작할 수 있다 |
 
 전체 결과는 `perf/results/`에 JSON으로 남는다(git에 올리지 않는다).
 
