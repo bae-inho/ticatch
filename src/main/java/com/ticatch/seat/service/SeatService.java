@@ -75,6 +75,23 @@ public class SeatService {
         seatRepository.findAllById(seatIds).forEach(Seat::sell);
     }
 
+    /**
+     * 회차의 선점·판매된 좌석을 모두 되돌린다. 회차 취소가 그 회차의 진행 중인 예매를 모두 잠그고 취소한 뒤 부른다.
+     * 좌석 상태와 예매 상태는 늘 일치하므로(불변식 10), 선점·판매된 좌석은 모두 방금 취소한 예매의 좌석이다.
+     */
+    @Transactional
+    public void releaseAllOfPerformance(Long performanceId) {
+        List<Seat> seats = seatRepository.findAllByPerformanceIdAndStatusIn(
+                performanceId, List.of(SeatStatus.HELD, SeatStatus.SOLD));
+        for (Seat seat : seats) {
+            if (seat.getStatus() == SeatStatus.SOLD) {
+                seat.releaseSold();
+            } else {
+                seat.release();
+            }
+        }
+    }
+
     /** 환불된 좌석을 다시 팔 수 있게 한다. 예매 행을 잠근 상태에서 부른다. */
     @Transactional
     public void releaseSold(List<Long> seatIds) {

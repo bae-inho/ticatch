@@ -9,6 +9,7 @@ import com.ticatch.payment.repository.PaymentRepository;
 import com.ticatch.payment.service.dto.PayCommand;
 import com.ticatch.payment.service.dto.PaymentResult;
 import com.ticatch.point.service.PointService;
+import com.ticatch.point.service.dto.RefundCommand;
 import com.ticatch.reservation.service.ReservationService;
 import java.time.Clock;
 import java.time.Instant;
@@ -87,10 +88,10 @@ public class PaymentService {
     public int refundAllOfPerformance(Long performanceId) {
         Instant now = Instant.now(clock);
         List<Payment> payments = paymentRepository.findAllByPerformanceIdAndStatus(performanceId, PaymentStatus.PAID);
-        for (Payment payment : payments) {
-            payment.refund(now);
-            pointService.refund(payment.getUserId(), payment.getAmount(), payment.getId());
-        }
+        payments.forEach(payment -> payment.refund(now));
+        pointService.refundAll(payments.stream()
+                .map(payment -> new RefundCommand(payment.getUserId(), payment.getAmount(), payment.getId()))
+                .toList());
         return payments.size();
     }
 

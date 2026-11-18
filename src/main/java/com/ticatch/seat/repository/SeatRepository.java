@@ -23,6 +23,8 @@ public interface SeatRepository extends JpaRepository<Seat, Long> {
     @Query("select s from Seat s where s.performanceId = :performanceId and s.id in :seatIds order by s.id")
     List<Seat> findAllForUpdate(@Param("performanceId") Long performanceId, @Param("seatIds") List<Long> seatIds);
 
+    List<Seat> findAllByPerformanceIdAndStatusIn(Long performanceId, List<SeatStatus> statuses);
+
     @Query("""
             select new com.ticatch.seat.repository.projection.SeatProjection(s.id, s.label, s.seatGradeId, s.status)
             from Seat s

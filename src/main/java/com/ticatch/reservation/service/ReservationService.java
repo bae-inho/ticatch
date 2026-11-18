@@ -124,12 +124,11 @@ public class ReservationService {
         for (Reservation reservation : reservations) {
             if (reservation.getStatus() == ReservationStatus.CONFIRMED) {
                 reservation.cancelConfirmed();
-                seatService.releaseSold(reservation.seatIds());
             } else {
                 reservation.cancel();
-                seatService.release(reservation.seatIds());
             }
         }
+        seatService.releaseAllOfPerformance(performanceId);
         return reservations.size();
     }
 
