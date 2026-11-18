@@ -55,3 +55,4 @@ Testcontainers가 PostgreSQL 컨테이너를 직접 띄우므로 Docker가 실�
 | API 규약, 엔드포인트, 에러 코드 | [API 설계](docs/api.md) |
 | 패키지, 의존 규칙, 이름, 테스트, 커밋 | [개발 규칙](docs/conventions.md) |
 | 왜 이렇게 설계했는가 | [ADR](docs/adr/README.md) |
+| 부하를 걸면 얼마나 버티는가 | [성능 측정 기록](docs/performance.md), [측정 방법](perf/README.md) |
