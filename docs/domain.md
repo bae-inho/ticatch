@@ -280,7 +280,7 @@ DB로 표현할 수 있는 규칙은 코드에서 검사하더라도 DB에도 �
 
 | # | 상황 | 깨질 수 있는 규칙 | 대응 방향 |
 | --- | --- | --- | --- |
-| 1 | 여러 명이 같은 좌석을 동시에 선점 | 1 | 기준선은 좌석 행 비관적 락([ADR 0008](adr/0008-hold-seats-with-ordered-pessimistic-locks.md)). `ReservationConcurrencyTest`로 확인했다. 7단계에서 다른 방식과 측정·비교한다 |
+| 1 | 여러 명이 같은 좌석을 동시에 선점 | 1 | 좌석 행 비관적 락([ADR 0008](adr/0008-hold-seats-with-ordered-pessimistic-locks.md)). `ReservationConcurrencyTest`로 확인했다. 7단계에서 NOWAIT, 조건부 UPDATE, 낙관적 락과 측정·비교한 뒤 유지했다([ADR 0010](adr/0010-keep-ordered-pessimistic-lock-for-seat-hold.md)) |
 | 2 | A는 1·2번, B는 2·1번 좌석을 동시에 선점 | 교착 상태(deadlock) | 좌석을 항상 ID 오름차순으로 잠근다. `ReservationConcurrencyTest`로 확인했다 |
 | 3 | 같은 회원이 같은 회차에 선점 요청을 연달아 보냄 (더블 클릭) | 2 | 조건부 유일 인덱스가 두 번째 요청을 막는다. `ReservationConcurrencyTest`로 확인했다 |
 | 4 | 만료 처리와 결제가 동시에 일어남 | 10 | 결제는 예매 행을 잠그고, 만료 스케줄러는 `FOR UPDATE SKIP LOCKED`로 잠긴 예매를 건너뛴다. 둘 중 하나만 반영된다. `PaymentConcurrencyTest`로 확인했다 |
