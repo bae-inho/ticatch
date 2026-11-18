@@ -32,7 +32,18 @@ UNION ALL
 SELECT '결제 금액과 예매 금액이 다름', count(*)
 FROM payment p
          JOIN reservation r ON r.id = p.reservation_id
-WHERE p.amount <> r.total_amount;
+WHERE p.amount <> r.total_amount
+UNION ALL
+SELECT '9. 환불된 결제에 환불 거래가 정확히 하나가 아님', count(*)
+FROM payment p
+WHERE p.status = 'REFUNDED'
+  AND (SELECT count(*) FROM point_transaction t WHERE t.payment_id = p.id AND t.type = 'REFUND') <> 1
+UNION ALL
+SELECT '취소된 예매에 결제 완료가 남음', count(*)
+FROM payment p
+         JOIN reservation r ON r.id = p.reservation_id
+WHERE r.status = 'CANCELED'
+  AND p.status = 'PAID';
 
 SELECT performance_id, status, count(*) AS seats
 FROM seat

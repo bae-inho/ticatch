@@ -119,26 +119,35 @@ export function booked() {
     bookedAt.add(Date.now() - exec.scenario.startTime);
 }
 
-/** 측정에 쓰는 숫자만 짧게 출력하고, 전체 결과는 perf/results에 JSON으로 남긴다. */
+/** 예매 시나리오의 숫자만 짧게 출력하고, 전체 결과는 perf/results에 JSON으로 남긴다. */
 export function summary(data, name) {
-    const metric = (key) => data.metrics[key] ? data.metrics[key].values : {};
-    const count = (key) => metric(key).count || 0;
-    const ms = (value) => (value === undefined ? '-' : `${Math.round(value)}ms`);
-    const trend = (key) => `p50=${ms(metric(key).med)} p95=${ms(metric(key)['p(95)'])} `
-        + `p99=${ms(metric(key)['p(99)'])} max=${ms(metric(key).max)}`;
+    const { count, metric, ms, trend } = readers(data);
     const lastBookedSeconds = (metric('booked_at').max || 0) / 1000;
     const bookingsPerSecond = lastBookedSeconds > 0 ? (count('booking_ok') / lastBookedSeconds).toFixed(1) : '-';
-    const text = [
-        `[${name}] ${new Date().toISOString()}`,
+    return report(data, name, [
         `  예매   성공=${count('booking_ok')} 포기=${count('booking_gave_up')} `
         + `마지막 성공=${ms(metric('booked_at').max)} 초당 예매=${bookingsPerSecond}`,
         `  선점   성공=${count('hold_ok')} 좌석 선점 실패=${count('hold_seat_taken')} 그 밖의 실패=${count('hold_failed')}  ${trend('hold_duration')}`,
         `  결제   성공=${count('pay_ok')} 실패=${count('pay_failed')}  ${trend('pay_duration')}`,
         `  오류   5xx·연결 실패=${count('server_errors')} 놓친 반복=${count('dropped_iterations')}`,
-        '',
-    ].join('\n');
-    const file = `/perf/results/${name}-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
-    return { stdout: text, [file]: JSON.stringify(data, null, 2) };
+    ]);
+}
+
+/** 결과에서 값을 꺼내는 도구 모음. */
+export function readers(data) {
+    const metric = (key) => (data.metrics[key] ? data.metrics[key].values : {});
+    const count = (key) => metric(key).count || 0;
+    const ms = (value) => (value === undefined ? '-' : `${Math.round(value)}ms`);
+    const trend = (key) => `p50=${ms(metric(key).med)} p95=${ms(metric(key)['p(95)'])} `
+        + `p99=${ms(metric(key)['p(99)'])} max=${ms(metric(key).max)}`;
+    return { count, metric, ms, trend };
+}
+
+/** 출력할 줄과 전체 결과 JSON을 handleSummary가 돌려줄 형태로 묶는다. */
+export function report(data, name, lines) {
+    const now = new Date().toISOString();
+    const file = `/perf/results/${name}-${now.replace(/[:.]/g, '-')}.json`;
+    return { stdout: [`[${name}] ${now}`, ...lines, ''].join('\n'), [file]: JSON.stringify(data, null, 2) };
 }
 
 function post(path, body, headers) {
