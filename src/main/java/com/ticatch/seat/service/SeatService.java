@@ -51,16 +51,16 @@ public class SeatService {
 
     /**
      * 회차의 좌석들을 모두 선점한다. 하나라도 없거나 이미 선점·판매됐으면 예외를 던지고, 트랜잭션이 되돌려져 아무것도 선점되지 않는다.
-     * 좌석을 ID 순서로 잠근 뒤 상태를 확인한다(ADR 0008).
+     * 살 수 있는 좌석만 바꾸는 조건부 UPDATE 한 문장으로 선점하고, 바뀐 행 수로 성공을 판단한다.
      */
     @Transactional
     public List<HeldSeatResult> hold(Long performanceId, List<Long> seatIds) {
-        List<Seat> seats = seatRepository.findAllForUpdate(performanceId, seatIds);
-        if (seats.size() != seatIds.size()) {
-            throw new BusinessException(SeatErrorCode.SEAT_NOT_FOUND);
+        int held = seatRepository.holdAvailable(performanceId, seatIds, Instant.now(clock));
+        if (held != seatIds.size()) {
+            boolean allExist = seatRepository.countByPerformanceIdAndIdIn(performanceId, seatIds) == seatIds.size();
+            throw new BusinessException(allExist ? SeatErrorCode.SEAT_NOT_AVAILABLE : SeatErrorCode.SEAT_NOT_FOUND);
         }
-        seats.forEach(Seat::hold);
-        return seats.stream().map(HeldSeatResult::from).toList();
+        return seatRepository.findAllById(seatIds).stream().map(HeldSeatResult::from).toList();
     }
 
     /** 선점을 푼다. 선점 취소와 만료에서 부른다. 이 좌석들을 가진 예매 행을 잠근 상태에서 부른다. */
