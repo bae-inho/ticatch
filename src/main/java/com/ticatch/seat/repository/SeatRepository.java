@@ -5,23 +5,19 @@ import com.ticatch.seat.domain.SeatStatus;
 import com.ticatch.seat.repository.projection.SeatGradeSalesProjection;
 import com.ticatch.seat.repository.projection.SeatGradeStockProjection;
 import com.ticatch.seat.repository.projection.SeatProjection;
-import jakarta.persistence.LockModeType;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface SeatRepository extends JpaRepository<Seat, Long> {
 
     /**
-     * 회차의 좌석들을 ID 순서로 잠그고 읽는다({@code SELECT ... ORDER BY id FOR UPDATE}).
-     * 여러 좌석을 잠그는 요청들이 항상 같은 순서로 잠가서 서로를 기다리는 교착 상태가 생기지 않는다.
-     * 다른 회차의 좌석 ID는 결과에 들어오지 않는다.
+     * 회차의 좌석들을 잠그지 않고 ID 순서로 읽는다. 바꾼 내용을 저장할 때 버전을 비교해 충돌을 찾는다(낙관적 락).
+     * ID 순서로 읽어야 저장할 때도 같은 순서로 행을 바꿔 교착 상태가 생기지 않는다. 다른 회차의 좌석 ID는 결과에 들어오지 않는다.
      */
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from Seat s where s.performanceId = :performanceId and s.id in :seatIds order by s.id")
-    List<Seat> findAllForUpdate(@Param("performanceId") Long performanceId, @Param("seatIds") List<Long> seatIds);
+    List<Seat> findAllInPerformance(@Param("performanceId") Long performanceId, @Param("seatIds") List<Long> seatIds);
 
     @Query("""
             select new com.ticatch.seat.repository.projection.SeatProjection(s.id, s.label, s.seatGradeId, s.status)

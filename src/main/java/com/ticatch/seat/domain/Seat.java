@@ -11,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,6 +39,10 @@ public class Seat extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private SeatStatus status;
+
+    /** 낙관적 락. 같은 좌석을 동시에 바꾸면 나중에 커밋하는 쪽이 실패한다. */
+    @Version
+    private long version;
 
     /** 선점한다. 이미 선점·판매된 좌석이면 실패한다. 좌석 행을 잠근 상태에서 부른다. */
     public void hold() {
