@@ -11,10 +11,10 @@
 
 | 방식 | 구현 | 실험 브랜치 |
 | --- | --- | --- |
-| 비관적 락 (기준선) | 좌석을 `ORDER BY id`로 잠그고 읽은 뒤 상태 확인 | `test/seat-hold-comparison` `6d465ce` |
-| NOWAIT | 기준선과 같지만 잠긴 좌석이 있으면 기다리지 않고 바로 실패 | `refactor/seat-hold-nowait` `009e76c` |
-| 조건부 UPDATE | `UPDATE seat SET status = 'HELD' WHERE ... AND status = 'AVAILABLE'` 한 문장, 바뀐 행 수로 판단 | `refactor/seat-hold-conditional-update` `ec07157` |
-| 낙관적 락 | 잠그지 않고 읽고, 저장할 때 `@Version`으로 충돌 확인 | `refactor/seat-hold-optimistic` `51e167d` |
+| 비관적 락 (기준선) | 좌석을 `ORDER BY id`로 잠그고 읽은 뒤 상태 확인 | `test/seat-hold-comparison` `aced19b` |
+| NOWAIT | 기준선과 같지만 잠긴 좌석이 있으면 기다리지 않고 바로 실패 | `refactor/seat-hold-nowait` `f4c401e` |
+| 조건부 UPDATE | `UPDATE seat SET status = 'HELD' WHERE ... AND status = 'AVAILABLE'` 한 문장, 바뀐 행 수로 판단 | `refactor/seat-hold-conditional-update` `09dfaf9` |
+| 낙관적 락 | 잠그지 않고 읽고, 저장할 때 `@Version`으로 충돌 확인 | `refactor/seat-hold-optimistic` `0c441fe` |
 
 측정 조건과 수치는 [성능 측정 기록 4절](../performance.md#4-좌석-선점-방식-비교-2026-11-18)에 있다. 시나리오는 두 가지다. 티켓 오픈(`rush.js`)은 회원 500명이 좌석 200석에 1석씩 몰린다. 인기 좌석(`hot.js`)은 회원 300명이 좌석 60석에 2석씩 몰린다. 커넥션 풀 10개(기본값)와 30개에서 쟀다.
 
